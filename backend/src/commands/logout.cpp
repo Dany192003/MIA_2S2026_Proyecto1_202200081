@@ -19,6 +19,7 @@ CommandResult CommandHandler::processLogout(const json& params) {
         currentSession.diskPath = "";
         currentSession.uid = -1;
         currentSession.gid = -1;
+        currentSession.group = "";  // ✅ Limpiar grupo
         
         // 3. Éxito
         result.success = true;

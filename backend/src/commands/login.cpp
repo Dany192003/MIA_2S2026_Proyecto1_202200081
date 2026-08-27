@@ -80,7 +80,8 @@ CommandResult CommandHandler::processLogin(const json& params) {
         // Buscar usuario
         bool userFound = false;
         int uid = -1;
-        std::string group;
+        int gid = -1;
+        std::string group = "";
         std::string password;
         
         for (const auto& line : userLines) {
@@ -103,6 +104,28 @@ CommandResult CommandHandler::processLogin(const json& params) {
                         uid = std::stoi(parts[0]);
                         group = parts[2];
                         password = parts[4];
+                        
+                        // Buscar el GID del grupo
+                        for (const auto& gline : userLines) {
+                            if (gline.find(", G, ") != std::string::npos) {
+                                std::stringstream gss(gline);
+                                std::string gtoken;
+                                std::vector<std::string> gparts;
+                                while (std::getline(gss, gtoken, ',')) {
+                                    gparts.push_back(gtoken);
+                                }
+                                if (gparts.size() >= 3) {
+                                    for (auto& p : gparts) {
+                                        p.erase(0, p.find_first_not_of(" "));
+                                        p.erase(p.find_last_not_of(" ") + 1);
+                                    }
+                                    if (gparts[2] == group && std::stoi(gparts[0]) != 0) {
+                                        gid = std::stoi(gparts[0]);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         break;
                     }
                 }
@@ -124,7 +147,8 @@ CommandResult CommandHandler::processLogin(const json& params) {
         currentSession.mountId = id;
         currentSession.diskPath = diskPath;
         currentSession.uid = uid;
-        currentSession.gid = 0;
+        currentSession.gid = gid;
+        currentSession.group = group;  // ✅ Guardar nombre del grupo
         
         result.success = true;
         result.message = "Sesión iniciada como: " + user;
@@ -132,7 +156,8 @@ CommandResult CommandHandler::processLogin(const json& params) {
             {"user", user},
             {"id", id},
             {"uid", currentSession.uid},
-            {"gid", currentSession.gid}
+            {"gid", currentSession.gid},
+            {"group", currentSession.group}
         };
         
     } catch (const std::exception& e) {

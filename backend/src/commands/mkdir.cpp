@@ -1,35 +1,9 @@
 #include "command_handler.h"
+#include "../utils/ext2_utils.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <cstring>
-
-// Función auxiliar para crear carpetas recursivamente
-static bool createDirectoriesRecursive(const std::string& path) {
-    size_t pos = 0;
-    std::string currentPath;
-    
-    if (path[0] == '/') {
-        currentPath = "/";
-        pos = 1;
-    }
-    
-    while (pos < path.length()) {
-        size_t nextSlash = path.find('/', pos);
-        if (nextSlash == std::string::npos) {
-            break;
-        }
-        
-        std::string dir = path.substr(0, nextSlash);
-        if (dir.length() > 0 && dir != "/") {
-            if (mkdir(dir.c_str(), 0755) != 0 && errno != EEXIST) {
-                return false;
-            }
-        }
-        pos = nextSlash + 1;
-    }
-    return true;
-}
 
 CommandResult CommandHandler::processMkdir(const json& params) {
     CommandResult result;
@@ -52,46 +26,93 @@ CommandResult CommandHandler::processMkdir(const json& params) {
             return result;
         }
         
-        // 4. Verificar si la carpeta ya existe
-        struct stat buffer;
-        if (stat(path.c_str(), &buffer) == 0) {
-            if (S_ISDIR(buffer.st_mode)) {
-                result.message = "Error: La carpeta ya existe: " + path;
-            } else {
-                result.message = "Error: Ya existe un archivo con ese nombre: " + path;
-            }
+        // 4. Obtener información de la partición
+        std::string diskPath = currentSession.diskPath;
+        std::string mountId = currentSession.mountId;
+        int uid = currentSession.uid;
+        int gid = currentSession.gid;
+        
+        // 5. Leer el MBR
+        std::fstream disk(diskPath, std::ios::in | std::ios::out | std::ios::binary);
+        if (!disk.is_open()) {
+            result.message = "Error: No se pudo abrir el disco: " + diskPath;
             return result;
         }
         
-        // 5. Crear la carpeta
-        if (recursive) {
-            if (!createDirectoriesRecursive(path)) {
-                result.message = "Error: No se pudieron crear las carpetas para: " + path;
-                return result;
-            }
-        } else {
-            // Verificar que la carpeta padre exista
-            size_t lastSlash = path.find_last_of('/');
-            if (lastSlash != std::string::npos) {
-                std::string parentDir = path.substr(0, lastSlash);
-                if (stat(parentDir.c_str(), &buffer) != 0) {
-                    result.message = "Error: La carpeta padre no existe. Use -p para crearla automáticamente";
-                    return result;
-                }
-            }
+        MBR mbr;
+        disk.seekg(0, std::ios::beg);
+        disk.read(reinterpret_cast<char*>(&mbr), sizeof(MBR));
+        
+        // 6. Buscar la partición por ID
+        int partitionIndex = -1;
+        for (int i = 0; i < 4; i++) {
+            char partId[5] = {0};
+            memcpy(partId, mbr.mbr_partitions[i].part_id, 4);
+            partId[4] = '\0';
+            std::string partIdStr(partId);
+            partIdStr = partIdStr.c_str();
             
-            // Crear la carpeta
-            if (mkdir(path.c_str(), 0755) != 0) {
-                result.message = "Error: No se pudo crear la carpeta: " + path;
-                return result;
+            if (partIdStr == mountId && mbr.mbr_partitions[i].part_s > 0) {
+                partitionIndex = i;
+                break;
             }
         }
         
-        // 6. TODO: Crear inodo y bloques en el sistema EXT2
+        if (partitionIndex == -1) {
+            disk.close();
+            result.message = "Error: No se encontró la partición para el ID: " + mountId;
+            return result;
+        }
         
-        // 7. Éxito
+        // 7. Leer el Superblock
+        Superblock sb = Ext2Utils::readSuperblock(diskPath, mbr, partitionIndex);
+        disk.close();
+        
+        // 8. Verificar si la carpeta ya existe en EXT2
+        int existingInode = Ext2Utils::findInodeByPath(diskPath, path, sb, mbr, partitionIndex);
+        if (existingInode != -1) {
+            result.message = "Error: La carpeta ya existe en EXT2: " + path;
+            return result;
+        }
+        
+        // 9. Verificar que la carpeta padre exista
+        size_t lastSlash = path.find_last_of('/');
+        if (lastSlash != std::string::npos) {
+            std::string parentDir = path.substr(0, lastSlash);
+            int parentInode = Ext2Utils::findInodeByPath(diskPath, parentDir, sb, mbr, partitionIndex);
+            
+            if (parentInode == -1) {
+                if (recursive) {
+                    // Crear carpetas padre recursivamente en EXT2
+                    std::vector<std::string> parts = Ext2Utils::splitPath(parentDir);
+                    std::string currentPath = "/";
+                    for (const auto& part : parts) {
+                        std::string testPath = currentPath + part;
+                        int inode = Ext2Utils::findInodeByPath(diskPath, testPath, sb, mbr, partitionIndex);
+                        if (inode == -1) {
+                            if (!Ext2Utils::createDirectory(diskPath, testPath, sb, mbr, partitionIndex, uid, gid)) {
+                                result.message = "Error: No se pudo crear la carpeta en EXT2: " + testPath;
+                                return result;
+                            }
+                        }
+                        currentPath = testPath + "/";
+                    }
+                } else {
+                    result.message = "Error: La carpeta padre no existe en EXT2. Use -p para crearla automáticamente";
+                    return result;
+                }
+            }
+        }
+        
+        // 10. Crear la carpeta en EXT2
+        if (!Ext2Utils::createDirectory(diskPath, path, sb, mbr, partitionIndex, uid, gid)) {
+            result.message = "Error: No se pudo crear la carpeta en EXT2: " + path;
+            return result;
+        }
+        
+        // 11. Éxito
         result.success = true;
-        result.message = "Carpeta creada exitosamente: " + path;
+        result.message = "Carpeta creada exitosamente en EXT2: " + path;
         result.data["directory"] = {
             {"path", path},
             {"recursive", recursive},
