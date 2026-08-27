@@ -160,7 +160,8 @@ void Lexer::identifyParameter() {
     
     advance(); 
     std::string paramName;
-    while (!isAtEnd() && std::isalpha(peek())) {
+    // Permitir letras, números y guiones bajos en nombres de parámetros
+    while (!isAtEnd() && (std::isalnum(peek()) || peek() == '_')) {
         paramName += peek();
         advance();
     }

@@ -480,3 +480,21 @@ bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& 
     // Implementación simplificada
     return true;
 }
+
+BlockPointer Ext2Utils::readBlockPointer(std::fstream& disk, const Superblock& sb, int blockIndex) {
+    BlockPointer block;
+    memset(&block, 0, sizeof(BlockPointer));
+    
+    int64_t offset = sb.s_block_start + blockIndex * BLOCK_SIZE;
+    disk.seekg(offset, std::ios::beg);
+    disk.read(reinterpret_cast<char*>(&block), sizeof(BlockPointer));
+    
+    return block;
+}
+
+bool Ext2Utils::writeBlockPointer(std::fstream& disk, const Superblock& sb, int blockIndex, const BlockPointer& block) {
+    int64_t offset = sb.s_block_start + blockIndex * BLOCK_SIZE;
+    disk.seekp(offset, std::ios::beg);
+    disk.write(reinterpret_cast<const char*>(&block), sizeof(BlockPointer));
+    return true;
+}

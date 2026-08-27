@@ -12,7 +12,7 @@ CommandResult CommandHandler::processRep(const json& params) {
         std::string name = params["name"];
         std::string path = params["path"];
         std::string id = params["id"];
-        std::string path_file = params.contains("path_file_1s") ? std::string(params["path_file_1s"]) : "";
+        std::string path_file = params.contains("path_file_ls") ? std::string(params["path_file_ls"]) : "";
         
         if (mountedDisks.find(id) == mountedDisks.end()) {
             result.message = "Error: El ID de montaje no existe: " + id;
@@ -72,13 +72,13 @@ CommandResult CommandHandler::processRep(const json& params) {
             success = Reports::ReportTREE(diskPath, mbr, partitionIndex, path, errMsg);
         } else if (name == "file") {
             if (path_file.empty()) {
-                result.message = "Error: Se requiere path_file_1s para el reporte file";
+                result.message = "Error: Se requiere path_file_ls para el reporte file";
                 return result;
             }
             success = Reports::ReportFILE(diskPath, mbr, partitionIndex, path, path_file, errMsg);
         } else if (name == "ls") {
             if (path_file.empty()) {
-                result.message = "Error: Se requiere path_file_1s para el reporte ls";
+                result.message = "Error: Se requiere path_file_ls para el reporte ls";
                 return result;
             }
             success = Reports::ReportLS(diskPath, mbr, partitionIndex, path, path_file, errMsg);

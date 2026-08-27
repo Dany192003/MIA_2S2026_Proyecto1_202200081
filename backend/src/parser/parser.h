@@ -40,7 +40,7 @@ std::vector<std::string> validCommands = {
     {"mkfile", {"path", "r", "size", "cont"}},
     {"mkdir", {"path", "p"}},
     {"cat", {}},  // Parámetros dinámicos: file1, file2, ...
-    {"rep", {"name", "path", "id", "path_file_1s"}}
+    {"rep", {"name", "path", "id", "path_file_ls"}}  // ← Cambiar de path_file_1s a path_file_ls
 };
 
 std::map<std::string, std::vector<std::string>> requiredParams = {

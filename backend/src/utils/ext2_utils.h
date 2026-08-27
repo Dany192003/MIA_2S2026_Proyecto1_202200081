@@ -59,6 +59,9 @@ public:
     
     static BlockFile readBlockFile(std::fstream& disk, const Superblock& sb, int blockIndex);
     static bool writeBlockFile(std::fstream& disk, const Superblock& sb, int blockIndex, const BlockFile& block);
+
+    static BlockPointer readBlockPointer(std::fstream& disk, const Superblock& sb, int blockIndex);
+    static bool writeBlockPointer(std::fstream& disk, const Superblock& sb, int blockIndex, const BlockPointer& block);    
 };
 
 #endif
