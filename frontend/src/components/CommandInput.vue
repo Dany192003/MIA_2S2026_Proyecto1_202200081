@@ -17,15 +17,12 @@
       <textarea
         v-model="command"
         placeholder="Ej: mkdisk -size=100 -path=/home/disk.dk"
-        rows="4"
+        rows="6"
         class="command-textarea"
         @keydown.ctrl.enter="submitCommand"
         @input="autoResize"
         ref="textarea"
       ></textarea>
-      <div class="char-count" v-if="command.length > 0">
-        {{ command.length }} caracteres
-      </div>
     </div>
     
     <div class="button-group">
@@ -37,9 +34,11 @@
         </span>
       </button>
       <button @click="clearCommand" class="btn-secondary">
-        Limpiar
+        🗑 Limpiar
       </button>
     </div>
+    
+    <FileUpload @file-loaded="onFileLoaded" />
     
     <div class="status-bar" v-if="loading">
       <div class="status-indicator">
@@ -51,13 +50,6 @@
     <div class="shortcuts">
       <span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> para ejecutar</span>
     </div>
-    
-    <!-- Carga masiva -->
-    <FileUpload 
-      @file-loaded="onFileLoaded"
-      @execution-complete="onExecutionComplete"
-      @file-cleared="onFileCleared"
-    />
   </div>
 </template>
 
@@ -88,12 +80,10 @@ export default {
     },
     
     async submitCommand() {
-      const trimmedCommand = this.command.trim()
-      
-      if (!trimmedCommand) {
+      if (!this.command.trim()) {
         this.$emit('command-submitted', {
           success: false,
-          message: 'Por favor ingresa un comando',
+          message: '⚠️ Por favor ingresa un comando',
           errors: [{ message: 'Comando vacío' }]
         })
         return
@@ -102,46 +92,24 @@ export default {
       if (!this.backendOnline) {
         this.$emit('command-submitted', {
           success: false,
-          message: 'Backend no disponible',
-          errors: [{ message: 'El servidor no está corriendo en http://localhost:8080' }]
+          message: '❌ Backend no disponible',
+          errors: [{ message: 'Servidor no está corriendo en http://localhost:8080' }]
         })
         return
       }
       
       this.loading = true
       
-      // Dividir por líneas y filtrar vacías
-      const lines = trimmedCommand.split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .filter(line => !line.startsWith('#'))
+      const result = await analyzeCommand(this.command)
       
-      // Si es un solo comando, ejecutarlo directamente
-      if (lines.length === 1) {
-        const result = await analyzeCommand(lines[0])
-        if (result.success) {
-          this.$emit('command-submitted', result.data)
-        } else {
-          this.$emit('command-submitted', {
-            success: false,
-            message: 'Error de conexión',
-            errors: [{ message: result.error }]
-          })
-        }
-      } 
-      // Si son múltiples comandos, ejecutar en lote
-      else if (lines.length > 1) {
-        for (let i = 0; i < lines.length; i++) {
-          const result = await analyzeCommand(lines[i])
-          this.$emit('command-submitted', {
-            ...result.data,
-            _batch: {
-              index: i + 1,
-              total: lines.length,
-              command: lines[i]
-            }
-          })
-        }
+      if (result.success) {
+        this.$emit('command-submitted', result.data)
+      } else {
+        this.$emit('command-submitted', {
+          success: false,
+          message: '❌ Error',
+          errors: [{ message: result.error || 'Error desconocido' }]
+        })
       }
       
       this.loading = false
@@ -162,21 +130,10 @@ export default {
     },
     
     onFileLoaded(data) {
-      console.log(`Archivo cargado: ${data.count} comandos`)
       if (data.commands && data.commands.length > 0) {
         this.command = data.commands.join('\n')
         this.autoResize()
       }
-    },
-    
-    onExecutionComplete(data) {
-      console.log(`Completado: ${data.success} éxitos, ${data.failed} fallos`)
-    },
-    
-    onFileCleared() {
-      this.command = ''
-      this.$emit('command-submitted', null)
-      this.autoResize()
     }
   },
   watch: {
@@ -191,7 +148,7 @@ export default {
 .command-input {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   height: 100%;
 }
 
@@ -199,138 +156,136 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e8edf2;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #30363d;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .icon {
-  font-size: 18px;
-  color: #5b7a9a;
+  font-size: 16px;
+  color: #8b949e;
 }
 
 .input-header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
-  color: #2c3e50;
-  letter-spacing: 0.3px;
+  color: #e6edf3;
 }
 
 .connection-status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: #f5f7fa;
-  padding: 3px 12px 3px 8px;
-  border-radius: 20px;
-  border: 1px solid #e8edf2;
-  font-size: 12px;
+  gap: 4px;
+  background: #0d1117;
+  padding: 2px 10px 2px 6px;
+  border-radius: 12px;
+  border: 1px solid #30363d;
+  font-size: 11px;
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   display: inline-block;
-  transition: all 0.3s ease;
 }
 
 .status-dot.online {
-  background: #4caf50;
+  background: #3fb950;
 }
 
 .status-dot.offline {
-  background: #f44336;
+  background: #f85149;
 }
 
 .status-text.online {
-  color: #2c3e50;
+  color: #3fb950;
 }
 
 .status-text.offline {
-  color: #c62828;
+  color: #f85149;
 }
 
 .input-group {
-  position: relative;
   flex: 1;
+  min-height: 120px;
 }
 
 .command-textarea {
   width: 100%;
-  padding: 12px 14px;
-  background: #f7f9fc;
-  color: #1a2a3a;
-  border: 1px solid #dce4ec;
-  border-radius: 12px;
+  height: 100%;
+  min-height: 120px;
+  padding: 10px 14px;
+  background: #0d1117;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 8px;
   font-family: 'Courier New', monospace;
-  font-size: 13px;
-  resize: none;
-  min-height: 70px;
-  max-height: 200px;
-  transition: all 0.3s ease;
+  font-size: 14px;
+  resize: vertical;
+  transition: border-color 0.3s ease;
   line-height: 1.6;
 }
 
 .command-textarea:focus {
   outline: none;
-  border-color: #5b9bd5;
-  box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.12);
-  background: #ffffff;
+  border-color: #58a6ff;
 }
 
 .command-textarea::placeholder {
-  color: #a0b4c8;
-}
-
-.char-count {
-  position: absolute;
-  bottom: 8px;
-  right: 10px;
-  font-size: 10px;
-  color: #a0b4c8;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 1px 8px;
-  border-radius: 10px;
+  color: #30363d;
 }
 
 .button-group {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .btn-primary {
   flex: 1;
-  padding: 10px 20px;
-  background: #2c3e50;
-  color: white;
+  padding: 8px 20px;
+  background: #58a6ff;
+  color: #0d1117;
   border: none;
-  border-radius: 12px;
-  font-weight: 500;
+  border-radius: 6px;
+  font-weight: 600;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.3s ease;
-  letter-spacing: 0.3px;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #1a2a3a;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+  background: #79c0ff;
 }
 
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background: transparent;
+  color: #8b949e;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  border-color: #58a6ff;
+  color: #e6edf3;
 }
 
 .loading-text {
@@ -343,8 +298,8 @@ export default {
 .spinner-small {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border: 2px solid rgba(13, 17, 23, 0.3);
+  border-top-color: #0d1117;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -353,68 +308,49 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-.btn-secondary {
-  padding: 10px 18px;
-  background: transparent;
-  color: #2c3e50;
-  border: 1px solid #dce4ec;
-  border-radius: 12px;
-  font-weight: 500;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-secondary:hover {
-  background: #f0f4f8;
-  border-color: #b0c4d8;
-}
-
 .status-bar {
-  background: #eef3f8;
-  border-radius: 12px;
-  padding: 8px 14px;
-  border-left: 3px solid #5b9bd5;
+  background: #161b22;
+  border-radius: 6px;
+  padding: 6px 12px;
+  border-left: 3px solid #58a6ff;
 }
 
 .status-indicator {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #2c3e50;
+  gap: 8px;
+  color: #8b949e;
   font-size: 12px;
-  font-weight: 500;
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #dce4ec;
-  border-top-color: #5b9bd5;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #30363d;
+  border-top-color: #58a6ff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
 }
 
 .shortcuts {
-  margin-top: 2px;
   text-align: center;
-  font-size: 11px;
-  color: #a0b4c8;
+  font-size: 10px;
+  color: #30363d;
 }
 
 .shortcuts kbd {
   display: inline-block;
   padding: 0 6px;
-  background: #f0f4f8;
-  border: 1px solid #dce4ec;
-  border-radius: 6px;
-  font-size: 10px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  font-size: 9px;
   font-family: monospace;
-  color: #2c3e50;
+  color: #8b949e;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .input-header {
     flex-direction: column;
     align-items: stretch;
@@ -423,13 +359,13 @@ export default {
     flex-direction: column;
   }
   .btn-primary, .btn-secondary {
-    padding: 9px 14px;
+    padding: 6px 12px;
     font-size: 12px;
   }
   .command-textarea {
-    font-size: 12px;
-    padding: 10px;
-    min-height: 55px;
+    font-size: 13px;
+    padding: 8px 12px;
+    min-height: 100px;
   }
 }
 </style>

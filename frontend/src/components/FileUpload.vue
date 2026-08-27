@@ -1,10 +1,5 @@
 <template>
   <div class="file-upload">
-    <div class="upload-header">
-      <span class="icon"> </span>
-      <h4>Carga Masiva de Comandos</h4>
-    </div>
-    
     <div class="upload-area" 
          @dragover.prevent 
          @drop.prevent="handleDrop"
@@ -15,20 +10,22 @@
         type="file" 
         ref="fileInput" 
         @change="handleFile" 
-        accept=".txt"
+        accept=".txt,.smia"
         style="display: none"
       />
       
       <div v-if="!fileLoaded" class="upload-placeholder">
         <span class="upload-icon">📤</span>
-        <p>Arrastra o haz clic para subir un archivo</p>
-        <span class="upload-hint"> </span>
+        <p>Arrastra o haz clic para subir un script</p>
+        <span class="upload-hint">Archivos .txt o .smia con comandos EXT2</span>
       </div>
       
       <div v-else class="file-info">
-        <span class="file-icon"></span>
+        <span class="file-icon">📄</span>
         <div class="file-details">
           <span class="file-name">{{ fileName }}</span>
+          <span class="file-size">{{ fileSize }} bytes</span>
+          <span class="file-lines">{{ totalLines }} comandos</span>
         </div>
         <button @click.stop="clearFile" class="btn-remove">✕</button>
       </div>
@@ -56,7 +53,6 @@ export default {
         this.processFile(file)
       }
     },
-    
     handleDrop(event) {
       this.isDragover = false
       const file = event.dataTransfer.files[0]
@@ -64,7 +60,6 @@ export default {
         this.processFile(file)
       }
     },
-    
     processFile(file) {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -87,7 +82,6 @@ export default {
       }
       reader.readAsText(file)
     },
-    
     clearFile() {
       this.fileLoaded = false
       this.fileName = ''
@@ -103,89 +97,65 @@ export default {
 
 <style scoped>
 .file-upload {
-  background: #f7f9fc;
-  border-radius: 12px;
-  padding: 12px 14px;
-  border: 1px solid #e8edf2;
-  margin-top: 10px;
-}
-
-.upload-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.upload-header .icon {
-  font-size: 14px;
-  color: #5b7a9a;
-}
-
-.upload-header h4 {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #5b7a9a;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  margin-top: 4px;
 }
 
 .upload-area {
-  border: 2px dashed #dce4ec;
-  border-radius: 10px;
-  padding: 16px;
+  border: 2px dashed #30363d;
+  border-radius: 8px;
+  padding: 12px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-height: 60px;
+  min-height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #0d1117;
 }
 
 .upload-area:hover {
-  border-color: #5b9bd5;
-  background: #f0f4f8;
+  border-color: #58a6ff;
+  background: #161b22;
 }
 
 .upload-area.dragover {
-  border-color: #2e7d32;
-  background: #e8f5e9;
+  border-color: #3fb950;
+  background: rgba(63, 185, 80, 0.05);
 }
 
 .upload-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .upload-icon {
-  font-size: 28px;
+  font-size: 24px;
   opacity: 0.5;
 }
 
 .upload-placeholder p {
   margin: 0;
-  font-size: 13px;
-  color: #5b7a9a;
+  font-size: 12px;
+  color: #8b949e;
 }
 
 .upload-hint {
-  font-size: 11px;
-  color: #a0b4c8;
+  font-size: 10px;
+  color: #30363d;
 }
 
 .file-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
 
 .file-icon {
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .file-details {
@@ -197,44 +167,39 @@ export default {
 
 .file-name {
   font-weight: 600;
-  color: #2c3e50;
+  color: #e6edf3;
   font-size: 13px;
 }
 
 .file-size, .file-lines {
-  font-size: 11px;
-  color: #a0b4c8;
+  font-size: 10px;
+  color: #8b949e;
 }
 
 .btn-remove {
-  background: none;
+  background: transparent;
   border: none;
-  color: #c62828;
-  font-size: 18px;
+  color: #8b949e;
+  font-size: 16px;
   cursor: pointer;
   padding: 0 4px;
+  transition: color 0.3s ease;
 }
 
 .btn-remove:hover {
-  color: #b71c1c;
+  color: #f85149;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .upload-area {
-    padding: 12px;
-    min-height: 50px;
-  }
-  .upload-icon {
-    font-size: 22px;
+    padding: 8px;
+    min-height: 40px;
   }
   .upload-placeholder p {
-    font-size: 12px;
-  }
-  .file-info {
-    gap: 8px;
+    font-size: 11px;
   }
   .file-name {
-    font-size: 12px;
+    font-size: 11px;
   }
 }
 </style>

@@ -2,7 +2,7 @@
   <div class="command-output">
     <div class="output-header">
       <div class="header-left">
-        <span class="icon"> </span>
+        <span class="icon">◆</span>
         <h3>Resultado del Analisis</h3>
       </div>
       <div class="header-actions">
@@ -12,7 +12,7 @@
           class="btn-export"
           title="Exportar resultados a TXT"
         >
-          Resumen detallado
+          Exportar
         </button>
         <span class="badge" v-if="result" :class="result.success ? 'success-badge' : 'error-badge'">
           {{ result.success ? 'Valido' : 'Error' }}
@@ -21,7 +21,7 @@
     </div>
     
     <div v-if="!result && batchResults.length === 0" class="empty-state">
-      <div class="empty-icon">[ ]</div>
+      <div class="empty-icon">◆</div>
       <p>Esperando comando</p>
       <span>Ingresa un comando en el panel izquierdo</span>
     </div>
@@ -31,13 +31,13 @@
       <div v-if="result && !result._batch" class="results">
         
         <div class="status-banner" :class="result.success ? 'success' : 'error'">
-          <span class="status-icon">{{ result.success ? 'OK' : '✖' }}</span>
+          <span class="status-icon">{{ result.success ? '✓' : '✗' }}</span>
           <span class="status-text">{{ result.message }}</span>
         </div>
         
         <div class="section">
           <div class="section-header">
-            <span class="section-icon"> </span>
+            <span class="section-icon">⌨</span>
             <h4>Comando ingresado</h4>
           </div>
           <div class="command-display">{{ result.command }}</div>
@@ -45,7 +45,7 @@
         
         <div v-if="result.errors && result.errors.length > 0" class="section error-section">
           <div class="section-header">
-            <span class="section-icon"> </span>
+            <span class="section-icon">✗</span>
             <h4>Errores detectados</h4>
             <span class="error-count">{{ result.errors.length }}</span>
           </div>
@@ -67,7 +67,7 @@
         
         <div v-if="result.tokens && result.tokens.length > 0" class="section tokens-section">
           <div class="section-header">
-            <span class="section-icon"> </span>
+            <span class="section-icon">T</span>
             <h4>Analisis Lexico - Tokens</h4>
             <span class="token-count">{{ result.tokens.length }} tokens</span>
           </div>
@@ -124,7 +124,7 @@
         
         <div class="batch-summary">
           <div class="batch-summary-header">
-            <span class="batch-icon">[L]</span>
+            <span class="batch-icon">◈</span>
             <h4>Ejecucion por Lote</h4>
             <span class="batch-total">{{ batchTotal }} comandos</span>
           </div>
@@ -153,7 +153,7 @@
           >
             <div class="batch-result-header">
               <span class="batch-result-index">#{{ item.index }}</span>
-              <span class="batch-result-status">{{ item.result.success ? 'OK' : '✖' }}</span>
+              <span class="batch-result-status">{{ item.result.success ? '✓' : '✗' }}</span>
               <span class="batch-result-command">{{ item.command }}</span>
             </div>
             <div class="batch-result-message">{{ item.result.message }}</div>
@@ -376,16 +376,22 @@ export default {
 .command-output {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   height: 100%;
+  background: #0d1117;
+  color: #e6edf3;
+  font-size: 13px;
 }
 
+/* ===== HEADER ===== */
 .output-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8edf2;
+  border-bottom: 1px solid #30363d;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .header-left {
@@ -394,188 +400,198 @@ export default {
   gap: 8px;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .icon {
-  font-size: 18px;
-  color: #5b7a9a;
+  font-size: 16px;
+  color: #8b949e;
 }
 
 .output-header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #e6edf3;
   letter-spacing: 0.3px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .btn-export {
   padding: 4px 14px;
-  background: #2c3e50;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 12px;
+  background: #21262d;
+  color: #8b949e;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .btn-export:hover {
-  background: #1a2a3a;
-  transform: scale(1.02);
+  border-color: #58a6ff;
+  color: #e6edf3;
 }
 
 .badge {
   padding: 2px 12px;
-  border-radius: 16px;
+  border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
 }
 
 .success-badge {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb950;
+  border: 1px solid rgba(63, 185, 80, 0.2);
 }
 
 .error-badge {
-  background: #ffebee;
-  color: #c62828;
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.2);
 }
 
+/* ===== EMPTY STATE ===== */
 .empty-state {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #a0b4c8;
+  color: #8b949e;
   text-align: center;
-  padding: 30px 20px;
+  padding: 40px 20px;
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: 40px;
   margin-bottom: 12px;
-  opacity: 0.4;
-  color: #b0c4d8;
+  opacity: 0.3;
+  color: #30363d;
 }
 
 .empty-state p {
   margin: 0;
-  font-size: 16px;
-  font-weight: 500;
-  color: #5b7a9a;
+  font-size: 15px;
+  color: #e6edf3;
 }
 
 .empty-state span {
   font-size: 12px;
-  color: #a0b4c8;
+  color: #8b949e;
   margin-top: 4px;
 }
 
+/* ===== RESULTS ===== */
 .results {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow-y: auto;
   max-height: 540px;
   padding-right: 4px;
 }
 
+/* ===== STATUS BANNER ===== */
 .status-banner {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-weight: 500;
   font-size: 13px;
 }
 
 .status-banner.success {
-  background: #e8f5e9;
-  border-left: 3px solid #2e7d32;
-  color: #1b5e20;
+  background: rgba(63, 185, 80, 0.08);
+  border-left: 3px solid #3fb950;
+  color: #3fb950;
 }
 
 .status-banner.error {
-  background: #ffebee;
-  border-left: 3px solid #c62828;
-  color: #b71c1c;
+  background: rgba(248, 81, 73, 0.08);
+  border-left: 3px solid #f85149;
+  color: #f85149;
 }
 
 .status-icon {
-  font-size: 16px;
+  font-size: 15px;
 }
 
+/* ===== SECTIONS ===== */
 .section {
-  background: #f7f9fc;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid #e8edf2;
+  background: #161b22;
+  border-radius: 8px;
+  padding: 10px 14px;
+  border: 1px solid #30363d;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .section-icon {
   font-size: 12px;
-  color: #5b7a9a;
+  color: #8b949e;
 }
 
 .section-header h4 {
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  color: #5b7a9a;
+  color: #8b949e;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
 }
 
 .error-count, .token-count, .data-badge {
   margin-left: auto;
-  background: #e8edf2;
-  color: #5b7a9a;
-  padding: 0 8px;
-  border-radius: 12px;
+  background: #0d1117;
+  color: #8b949e;
+  padding: 0 10px;
+  border-radius: 10px;
   font-size: 9px;
   font-weight: 600;
+  border: 1px solid #30363d;
 }
 
 .error-count {
-  background: #ffcdd2;
-  color: #c62828;
+  background: rgba(248, 81, 73, 0.1);
+  color: #f85149;
+  border-color: rgba(248, 81, 73, 0.2);
 }
 
 .data-badge {
-  background: #e3ecf5;
-  color: #2c3e50;
-  font-family: monospace;
+  background: rgba(88, 166, 255, 0.1);
+  color: #58a6ff;
+  border-color: rgba(88, 166, 255, 0.2);
 }
 
+/* ===== COMMAND DISPLAY ===== */
 .command-display {
   padding: 8px 12px;
-  background: white;
-  border-radius: 10px;
+  background: #0d1117;
+  border-radius: 6px;
   font-family: 'Courier New', monospace;
   font-size: 12px;
-  color: #1a2a3a;
-  border: 1px solid #e8edf2;
+  color: #e6edf3;
+  border: 1px solid #30363d;
   word-break: break-all;
   line-height: 1.6;
 }
 
+/* ===== ERRORS ===== */
 .error-section {
-  border-left: 2px solid #c62828;
+  border-left: 2px solid #f85149;
 }
 
 .error-item {
@@ -583,12 +599,12 @@ export default {
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  background: white;
-  border-radius: 8px;
+  background: #0d1117;
+  border-radius: 6px;
   margin-bottom: 4px;
   font-size: 12px;
   flex-wrap: wrap;
-  border-left: 2px solid #c62828;
+  border-left: 2px solid #f85149;
 }
 
 .error-item:last-child {
@@ -597,67 +613,70 @@ export default {
 
 .error-type {
   padding: 1px 8px;
-  background: #c62828;
+  background: #f85149;
   color: white;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .error-message {
-  color: #b71c1c;
+  color: #f85149;
   flex: 1;
 }
 
 .error-location {
-  color: #90a4ae;
+  color: #8b949e;
   font-size: 10px;
 }
 
+/* ===== DATA ===== */
 .data-display {
   padding: 8px 12px;
-  background: #1a2a3a;
-  border-radius: 10px;
+  background: #0d1117;
+  border-radius: 6px;
   font-family: 'Courier New', monospace;
   font-size: 11px;
-  color: #a5d6a7;
-  border: 1px solid #2c3e50;
+  color: #aed581;
+  border: 1px solid #30363d;
   overflow-x: auto;
   margin: 0;
   max-height: 130px;
   overflow-y: auto;
 }
 
+/* ===== TOKENS TABLE ===== */
 .tokens-section {
-  border-top: 2px solid #5b9bd5;
+  border-top: 2px solid #58a6ff;
 }
 
 .tokens-table {
-  background: white;
-  border-radius: 10px;
-  border: 1px solid #e8edf2;
+  background: #0d1117;
+  border-radius: 8px;
+  border: 1px solid #30363d;
   overflow: hidden;
 }
 
 .tokens-header {
   display: grid;
-  grid-template-columns: 40px 90px 1fr 80px;
-  background: #2c3e50;
-  color: white;
-  font-size: 10px;
+  grid-template-columns: 35px 85px 1fr 75px;
+  background: #161b22;
+  color: #8b949e;
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 6px 10px;
+  border-bottom: 1px solid #30363d;
 }
 
 .tokens-row {
   display: grid;
-  grid-template-columns: 40px 90px 1fr 80px;
-  padding: 5px 10px;
+  grid-template-columns: 35px 85px 1fr 75px;
+  padding: 4px 10px;
   font-size: 11px;
-  border-bottom: 1px solid #f0f2f5;
+  border-bottom: 1px solid #21262d;
   transition: background 0.15s ease;
   align-items: center;
 }
@@ -667,7 +686,7 @@ export default {
 }
 
 .tokens-row:hover {
-  background: #f0f4f8;
+  background: #161b22;
 }
 
 .token-col {
@@ -677,7 +696,7 @@ export default {
 
 .token-col-index {
   font-weight: 700;
-  color: #000000;
+  color: #8b949e;
   font-size: 10px;
   justify-content: center;
 }
@@ -694,70 +713,71 @@ export default {
 .token-col-position {
   justify-content: center;
   font-size: 10px;
-  color: #90a4ae;
+  color: #8b949e;
 }
 
 .token-type-badge {
   padding: 1px 8px;
-  border-radius: 12px;
-  font-size: 9px;
+  border-radius: 10px;
+  font-size: 8px;
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .type-command {
-  background: #2c3e50;
-  color: white;
+  background: #58a6ff;
+  color: #0d1117;
 }
 
 .type-parameter {
-  background: #5b9bd5;
-  color: white;
+  background: #58a6ff;
+  color: #0d1117;
 }
 
 .type-value {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #3fb950;
+  color: #0d1117;
 }
 
 .type-number {
-  background: #e3f2fd;
-  color: #0d47a1;
+  background: #58a6ff;
+  color: #0d1117;
 }
 
 .type-string {
-  background: #fff3e0;
-  color: #e65100;
+  background: #d29922;
+  color: #0d1117;
 }
 
 .type-equals {
-  background: #f5f5f5;
-  color: #616161;
+  background: #8b949e;
+  color: #0d1117;
 }
 
 .type-flag {
-  background: #f3e5f5;
-  color: #6a1b9a;
+  background: #bc8cff;
+  color: #0d1117;
 }
 
 .type-identifier {
-  background: #e8eaf6;
-  color: #283593;
+  background: #8b949e;
+  color: #0d1117;
 }
 
 .token-value-display {
   font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: #1a2a3a;
+  font-size: 11px;
+  color: #e6edf3;
   word-break: break-all;
 }
 
 .token-position {
-  font-size: 10px;
-  color: #90a4ae;
+  font-size: 9px;
+  color: #8b949e;
   font-family: monospace;
 }
 
+/* ===== SUMMARY ===== */
 .summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -766,17 +786,17 @@ export default {
 }
 
 .summary-item {
-  background: white;
+  background: #161b22;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   text-align: center;
-  border: 1px solid #e8edf2;
+  border: 1px solid #30363d;
 }
 
 .summary-label {
   display: block;
   font-size: 9px;
-  color: #a0b4c8;
+  color: #8b949e;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   font-weight: 600;
@@ -787,31 +807,33 @@ export default {
   font-size: 18px;
   font-weight: 700;
   margin-top: 2px;
+  color: #e6edf3;
 }
 
 .success-text {
-  color: #2e7d32;
+  color: #3fb950;
 }
 
 .error-text {
-  color: #c62828;
+  color: #f85149;
 }
 
+/* ===== BATCH RESULTS ===== */
 .batch-results {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow-y: auto;
   max-height: 540px;
   padding-right: 4px;
 }
 
 .batch-summary {
-  background: #f7f9fc;
-  border-radius: 12px;
+  background: #161b22;
+  border-radius: 8px;
   padding: 14px 16px;
-  border: 1px solid #e8edf2;
-  border-top: 3px solid #2c3e50;
+  border: 1px solid #30363d;
+  border-top: 3px solid #58a6ff;
 }
 
 .batch-summary-header {
@@ -822,62 +844,64 @@ export default {
 }
 
 .batch-icon {
-  font-size: 18px;
+  font-size: 16px;
+  color: #8b949e;
 }
 
 .batch-summary-header h4 {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #e6edf3;
 }
 
 .batch-total {
   margin-left: auto;
   font-size: 11px;
-  color: #a0b4c8;
-  background: #e8edf2;
+  color: #8b949e;
+  background: #0d1117;
   padding: 2px 12px;
   border-radius: 12px;
+  border: 1px solid #30363d;
 }
 
 .batch-stats {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .batch-stat {
   flex: 1;
   text-align: center;
   padding: 6px 8px;
-  border-radius: 8px;
-  background: white;
-  border: 1px solid #e8edf2;
+  border-radius: 6px;
+  background: #0d1117;
+  border: 1px solid #30363d;
 }
 
 .stat-number {
   display: block;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
 }
 
 .stat-label {
-  font-size: 10px;
-  color: #a0b4c8;
+  font-size: 9px;
+  color: #8b949e;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 
 .success-stat .stat-number {
-  color: #2e7d32;
+  color: #3fb950;
 }
 
 .error-stat .stat-number {
-  color: #c62828;
+  color: #f85149;
 }
 
 .total-stat .stat-number {
-  color: #2c3e50;
+  color: #58a6ff;
 }
 
 .batch-results-list {
@@ -888,19 +912,19 @@ export default {
 
 .batch-result-item {
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   border-left: 3px solid;
-  background: white;
-  border: 1px solid #e8edf2;
+  background: #161b22;
+  border: 1px solid #30363d;
   border-left-width: 3px;
 }
 
 .batch-result-item.batch-success {
-  border-left-color: #2e7d32;
+  border-left-color: #3fb950;
 }
 
 .batch-result-item.batch-error {
-  border-left-color: #c62828;
+  border-left-color: #f85149;
 }
 
 .batch-result-header {
@@ -913,42 +937,42 @@ export default {
 .batch-result-index {
   font-size: 10px;
   font-weight: 700;
-  color: #a0b4c8;
+  color: #8b949e;
   min-width: 30px;
 }
 
 .batch-result-status {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .batch-result-command {
   font-family: 'Courier New', monospace;
   font-size: 11px;
-  color: #1a2a3a;
+  color: #e6edf3;
   word-break: break-all;
   flex: 1;
 }
 
 .batch-result-message {
   font-size: 11px;
-  color: #5b7a9a;
+  color: #8b949e;
   margin-top: 2px;
   padding-left: 38px;
 }
 
 .batch-result-item.batch-success .batch-result-message {
-  color: #2e7d32;
+  color: #3fb950;
 }
 
 .batch-result-item.batch-error .batch-result-message {
-  color: #c62828;
+  color: #f85149;
 }
 
 .batch-result-errors {
   padding-left: 38px;
   margin-top: 2px;
   font-size: 10px;
-  color: #c62828;
+  color: #f85149;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -956,9 +980,10 @@ export default {
 
 .batch-error-detail {
   font-size: 10px;
-  color: #c62828;
+  color: #f85149;
 }
 
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   .results, .batch-results {
     max-height: 380px;
@@ -968,18 +993,18 @@ export default {
   }
   .tokens-header,
   .tokens-row {
-    grid-template-columns: 30px 70px 1fr 65px;
-    font-size: 10px;
+    grid-template-columns: 28px 65px 1fr 60px;
+    font-size: 9px;
     padding: 4px 8px;
   }
   .token-col-index {
-    font-size: 9px;
+    font-size: 8px;
   }
   .token-value-display {
-    font-size: 11px;
+    font-size: 10px;
   }
   .token-type-badge {
-    font-size: 8px;
+    font-size: 7px;
     padding: 1px 6px;
   }
   .batch-stats {
@@ -993,7 +1018,8 @@ export default {
 
 @media (max-width: 480px) {
   .output-header {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
     gap: 6px;
   }
   .output-header h3 {
@@ -1022,23 +1048,23 @@ export default {
   }
   .tokens-header,
   .tokens-row {
-    grid-template-columns: 25px 60px 1fr 55px;
-    font-size: 9px;
+    grid-template-columns: 22px 55px 1fr 50px;
+    font-size: 8px;
     padding: 3px 6px;
     gap: 2px;
   }
   .token-col-index {
-    font-size: 8px;
+    font-size: 7px;
   }
   .token-value-display {
-    font-size: 10px;
+    font-size: 9px;
   }
   .token-type-badge {
-    font-size: 7px;
+    font-size: 6px;
     padding: 1px 4px;
   }
   .token-col-position {
-    font-size: 8px;
+    font-size: 7px;
   }
   .summary {
     grid-template-columns: repeat(3, 1fr);
@@ -1052,7 +1078,7 @@ export default {
   }
   .batch-stats {
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
   }
   .batch-result-command {
     font-size: 10px;
