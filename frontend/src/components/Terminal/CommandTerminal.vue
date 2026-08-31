@@ -1,21 +1,15 @@
 <template>
   <div class="command-terminal">
-    <!-- Header -->
     <div class="terminal-header">
       <div class="terminal-dots">
-        <span class="dot dot-red"></span>
-        <span class="dot dot-yellow"></span>
-        <span class="dot dot-green"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
       </div>
-      <span class="terminal-title">Terminal de Comandos</span>
-      <div class="terminal-actions">
-        <button class="btn-clear-terminal" @click="clearTerminal" title="Limpiar terminal">
-          🗑
-        </button>
-      </div>
+      <span class="terminal-title">TERMINAL DE COMANDOS</span>
+      <button class="btn-clear" @click="clearTerminal">Limpiar</button>
     </div>
 
-    <!-- Cuerpo: Grid 50/50 - MÁS ALTO -->
     <div class="terminal-grid">
       <div class="terminal-left">
         <CommandInput @command-submitted="handleCommand" />
@@ -25,9 +19,8 @@
       </div>
     </div>
 
-    <!-- Footer -->
     <div class="terminal-footer">
-      <span class="terminal-hint">💡 Ctrl+Enter para ejecutar | Carga archivos .smia o .txt</span>
+      <span>Ctrl + Enter para ejecutar | Carga archivos .smia o .txt</span>
     </div>
   </div>
 </template>
@@ -62,20 +55,20 @@ export default {
 <style scoped>
 .command-terminal {
   background: #0d1117;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #30363d;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 450px;
+  min-height: 350px;
+  overflow: hidden;
 }
 
 .terminal-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
+  padding: 6px 14px;
   background: #161b22;
   border-bottom: 1px solid #30363d;
   flex-shrink: 0;
@@ -83,134 +76,150 @@ export default {
 
 .terminal-dots {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 
-.dot {
+.terminal-dots .dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   display: inline-block;
 }
 
-.dot-red { background: #f85149; }
-.dot-yellow { background: #d29922; }
-.dot-green { background: #3fb950; }
+.terminal-dots .dot:nth-child(1) { background: #f85149; }
+.terminal-dots .dot:nth-child(2) { background: #d29922; }
+.terminal-dots .dot:nth-child(3) { background: #3fb950; }
 
 .terminal-title {
   flex: 1;
-  font-size: 12px;
+  font-size: 11px;
   color: #8b949e;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 1px;
   text-align: center;
 }
 
-.terminal-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.btn-clear-terminal {
+.btn-clear {
   background: transparent;
-  border: none;
+  border: 1px solid #30363d;
   color: #8b949e;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 2px 6px;
+  padding: 2px 12px;
   border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
   transition: all 0.3s ease;
 }
 
-.btn-clear-terminal:hover {
+.btn-clear:hover {
+  border-color: #f85149;
   color: #f85149;
-  background: rgba(248, 81, 73, 0.1);
 }
 
-/* ===== GRID MÁS ALTO ===== */
 .terminal-grid {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
   gap: 0;
   flex: 1;
-  min-height: 350px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .terminal-left {
-  padding: 14px 18px;
+  padding: 10px 14px;
   border-right: 1px solid #30363d;
-  overflow-y: auto;
-  background: #0d1117;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .terminal-left .command-input {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terminal-left .command-input .input-group {
+  flex: 1;
+  min-height: 0;
+}
+
+.terminal-left .command-input .command-textarea {
+  height: 100%;
+  min-height: 80px;
+  resize: none;
 }
 
 .terminal-right {
-  padding: 14px 18px;
-  overflow-y: auto;
-  background: #0d1117;
+  padding: 10px 14px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .terminal-right .command-output {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terminal-right .command-output .results,
+.terminal-right .command-output .batch-results {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .terminal-footer {
-  padding: 6px 16px;
+  padding: 4px 14px;
   background: #161b22;
   border-top: 1px solid #30363d;
   text-align: center;
   flex-shrink: 0;
-}
-
-.terminal-hint {
-  font-size: 11px;
+  font-size: 10px;
   color: #8b949e;
+  letter-spacing: 0.3px;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .command-terminal {
-    min-height: 350px;
+    min-height: 280px;
   }
   .terminal-grid {
     grid-template-columns: 1fr;
-    min-height: 300px;
   }
   .terminal-left {
     border-right: none;
     border-bottom: 1px solid #30363d;
-    max-height: 280px;
-    padding: 10px 14px;
+    max-height: 45%;
+    padding: 8px 12px;
   }
   .terminal-right {
-    max-height: 350px;
-    padding: 10px 14px;
+    max-height: 55%;
+    padding: 8px 12px;
   }
 }
 
 @media (max-width: 480px) {
   .command-terminal {
-    min-height: 300px;
+    min-height: 220px;
   }
   .terminal-left {
-    max-height: 220px;
-    padding: 8px 10px;
-  }
-  .terminal-right {
-    max-height: 280px;
-    padding: 8px 10px;
-  }
-  .terminal-header {
+    max-height: 40%;
     padding: 6px 10px;
   }
+  .terminal-right {
+    max-height: 60%;
+    padding: 6px 10px;
+  }
+  .terminal-header {
+    padding: 4px 10px;
+  }
   .terminal-title {
-    font-size: 10px;
+    font-size: 9px;
   }
 }
 </style>

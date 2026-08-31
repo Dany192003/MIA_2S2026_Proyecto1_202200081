@@ -1,43 +1,28 @@
 <template>
   <div class="system-summary">
     <div class="summary-header">
-      <h3>📊 Resumen del Sistema</h3>
+      <span class="summary-title">Sistema</span>
     </div>
     <div class="summary-cards">
       <div class="summary-card">
-        <div class="card-icon">💾</div>
-        <div class="card-info">
-          <span class="card-number">{{ stats.discos }}</span>
-          <span class="card-label">Discos</span>
-        </div>
+        <span class="card-number">{{ stats.discos }}</span>
+        <span class="card-label">Discos</span>
       </div>
       <div class="summary-card">
-        <div class="card-icon">📁</div>
-        <div class="card-info">
-          <span class="card-number">{{ stats.particiones }}</span>
-          <span class="card-label">Particiones</span>
-        </div>
+        <span class="card-number">{{ stats.particiones }}</span>
+        <span class="card-label">Particiones</span>
       </div>
       <div class="summary-card">
-        <div class="card-icon">📂</div>
-        <div class="card-info">
-          <span class="card-number">{{ stats.archivos }}</span>
-          <span class="card-label">Archivos</span>
-        </div>
+        <span class="card-number">{{ stats.archivos }}</span>
+        <span class="card-label">Archivos</span>
       </div>
       <div class="summary-card">
-        <div class="card-icon">👤</div>
-        <div class="card-info">
-          <span class="card-number">{{ stats.usuarios }}</span>
-          <span class="card-label">Usuarios</span>
-        </div>
+        <span class="card-number">{{ stats.usuarios }}</span>
+        <span class="card-label">Usuarios</span>
       </div>
       <div class="summary-card">
-        <div class="card-icon">🔗</div>
-        <div class="card-info">
-          <span class="card-number">{{ stats.montadas }}</span>
-          <span class="card-label">Montadas</span>
-        </div>
+        <span class="card-number">{{ stats.montadas }}</span>
+        <span class="card-label">Montadas</span>
       </div>
     </div>
   </div>
@@ -49,18 +34,17 @@ export default {
   data() {
     return {
       stats: {
-        discos: 3,
-        particiones: 6,
-        archivos: 12,
-        usuarios: 4,
-        montadas: 2
+        discos: 0,
+        particiones: 0,
+        archivos: 0,
+        usuarios: 0,
+        montadas: 0
       }
     }
   },
   methods: {
     refresh() {
-      // TODO: Obtener datos reales del backend
-      console.log('🔄 Actualizando resumen del sistema...')
+      console.log('Actualizando resumen del sistema...')
     }
   }
 }
@@ -69,92 +53,74 @@ export default {
 <style scoped>
 .system-summary {
   background: #161b22;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #30363d;
-  padding: 16px 20px;
-}
-
-.summary-header {
-  margin-bottom: 12px;
-}
-
-.summary-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #e6edf3;
-  letter-spacing: 0.3px;
-}
-
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 12px;
-}
-
-.summary-card {
-  background: #0d1117;
-  border-radius: 10px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid #30363d;
-  transition: all 0.3s ease;
-}
-
-.summary-card:hover {
-  border-color: #58a6ff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(88, 166, 255, 0.08);
-}
-
-.card-icon {
-  font-size: 24px;
-  opacity: 0.8;
-}
-
-.card-info {
+  padding: 8px 12px;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
+.summary-header {
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.summary-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  flex: 1;
+}
+
+.summary-card {
+  background: #0d1117;
+  border-radius: 6px;
+  padding: 4px 6px;
+  text-align: center;
+  border: 1px solid #30363d;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .card-number {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #e6edf3;
   line-height: 1.2;
 }
 
 .card-label {
-  font-size: 11px;
+  font-size: 8px;
   color: #8b949e;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
-@media (max-width: 600px) {
-  .system-summary {
-    padding: 12px 14px;
-  }
+@media (max-width: 640px) {
   .summary-cards {
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
   }
-  .summary-card {
-    padding: 10px;
-    flex-direction: column;
-    text-align: center;
-    gap: 4px;
-  }
-  .card-icon {
-    font-size: 20px;
+}
+
+@media (max-width: 480px) {
+  .system-summary {
+    padding: 6px 8px;
   }
   .card-number {
-    font-size: 16px;
+    font-size: 14px;
   }
   .card-label {
-    font-size: 9px;
+    font-size: 7px;
   }
 }
 </style>

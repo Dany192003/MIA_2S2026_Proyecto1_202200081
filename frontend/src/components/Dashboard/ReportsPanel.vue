@@ -1,49 +1,30 @@
 <template>
   <div class="reports-panel">
     <div class="reports-header">
-      <h3>📈 Reportes</h3>
-      <span class="reports-badge">{{ reportCount }} generados</span>
+      <span class="reports-title">Reportes</span>
+      <span class="reports-badge">{{ reportCount }}</span>
     </div>
 
     <div class="reports-tabs">
-      <button 
-        v-for="tab in reportTabs" 
-        :key="tab.key"
-        class="tab-btn"
-        :class="{ active: activeTab === tab.key }"
-        @click="activeTab = tab.key"
-      >
+      <button v-for="tab in reportTabs" :key="tab.key" class="tab-btn" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
         {{ tab.label }}
       </button>
     </div>
 
     <div class="reports-grid">
-      <button 
-        v-for="report in currentReports" 
-        :key="report.name"
-        class="report-btn"
-        :class="{ 'is-generated': report.generated }"
-        @click="generateReport(report)"
-      >
-        <span class="report-icon">{{ report.icon }}</span>
+      <button v-for="report in currentReports" :key="report.name" class="report-btn" :class="{ 'is-generated': report.generated }" @click="generateReport(report)">
         <span class="report-name">{{ report.name }}</span>
-        <span class="report-status" :class="report.generated ? 'status-ok' : 'status-pending'">
-          {{ report.generated ? '✅' : '⏳' }}
-        </span>
+        <span class="report-status">{{ report.generated ? '✓' : '·' }}</span>
       </button>
     </div>
 
     <div v-if="previewImage" class="report-preview">
       <div class="preview-header">
-        <span class="preview-title">📸 Vista previa: {{ previewName }}</span>
-        <button class="preview-close" @click="closePreview">✕</button>
+        <span class="preview-title">{{ previewName }}</span>
+        <button class="preview-close" @click="closePreview">×</button>
       </div>
       <div class="preview-content">
         <img :src="previewImage" alt="Reporte" @error="handleImageError" />
-      </div>
-      <div class="preview-actions">
-        <button class="btn-download" @click="downloadReport">📥 Descargar</button>
-        <button class="btn-download-dot" @click="downloadDot">📄 Descargar .dot</button>
       </div>
     </div>
   </div>
@@ -55,7 +36,7 @@ export default {
   data() {
     return {
       activeTab: 'sistema',
-      reportCount: 3,
+      reportCount: 0,
       previewImage: null,
       previewName: '',
       reportTabs: [
@@ -65,20 +46,20 @@ export default {
       ],
       reports: {
         sistema: [
-          { name: 'MBR', icon: '💾', generated: true },
-          { name: 'DISK', icon: '💿', generated: true },
-          { name: 'SB', icon: '📋', generated: true }
+          { name: 'MBR', generated: false },
+          { name: 'DISK', generated: false },
+          { name: 'SB', generated: false }
         ],
         archivos: [
-          { name: 'INODE', icon: '📄', generated: true },
-          { name: 'BLOCK', icon: '📦', generated: false },
-          { name: 'TREE', icon: '🌳', generated: false },
-          { name: 'LS', icon: '📂', generated: false }
+          { name: 'INODE', generated: false },
+          { name: 'BLOCK', generated: false },
+          { name: 'TREE', generated: false },
+          { name: 'LS', generated: false }
         ],
         bitmaps: [
-          { name: 'bm_inode', icon: '🔢', generated: false },
-          { name: 'bm_block', icon: '🔢', generated: false },
-          { name: 'FILE', icon: '📝', generated: false }
+          { name: 'bm_inode', generated: false },
+          { name: 'bm_block', generated: false },
+          { name: 'FILE', generated: false }
         ]
       }
     }
@@ -92,25 +73,15 @@ export default {
     generateReport(report) {
       report.generated = true
       this.reportCount = this.reportCount + 1
-      
-      // Simular preview
       this.previewName = report.name
-      this.previewImage = `https://via.placeholder.com/600x400/161b22/58a6ff?text=${report.name}`
-      
-      console.log(`📊 Generando reporte: ${report.name}`)
+      this.previewImage = `https://via.placeholder.com/400x200/161b22/58a6ff?text=${report.name}`
     },
     closePreview() {
       this.previewImage = null
       this.previewName = ''
     },
     handleImageError() {
-      console.warn('⚠️ No se pudo cargar la imagen del reporte')
-    },
-    downloadReport() {
-      console.log('📥 Descargando reporte...')
-    },
-    downloadDot() {
-      console.log('📄 Descargando archivo .dot...')
+      // Error silencioso
     }
   }
 }
@@ -119,51 +90,58 @@ export default {
 <style scoped>
 .reports-panel {
   background: #161b22;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #30363d;
-  padding: 16px 20px;
+  padding: 8px 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .reports-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 
-.reports-header h3 {
-  margin: 0;
-  font-size: 14px;
+.reports-title {
+  font-size: 10px;
   font-weight: 600;
-  color: #e6edf3;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .reports-badge {
-  font-size: 11px;
+  font-size: 9px;
   color: #3fb950;
-  background: rgba(63, 185, 80, 0.12);
-  padding: 2px 10px;
-  border-radius: 12px;
+  background: rgba(63, 185, 80, 0.1);
+  padding: 0 8px;
+  border-radius: 8px;
   border: 1px solid rgba(63, 185, 80, 0.2);
 }
 
 .reports-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: 3px;
+  margin-bottom: 4px;
   border-bottom: 1px solid #30363d;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
+  flex-shrink: 0;
 }
 
 .tab-btn {
   background: transparent;
   border: none;
   color: #8b949e;
-  padding: 4px 14px;
-  font-size: 12px;
+  padding: 1px 8px;
+  font-size: 9px;
   font-weight: 500;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 4px;
   transition: all 0.3s ease;
 }
 
@@ -174,47 +152,41 @@ export default {
 
 .tab-btn.active {
   color: #58a6ff;
-  background: rgba(88, 166, 255, 0.12);
+  background: rgba(88, 166, 255, 0.1);
 }
 
 .reports-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+  gap: 4px;
+  flex: 1;
+  overflow-y: auto;
+  align-content: start;
 }
 
 .report-btn {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  gap: 2px;
-  padding: 8px 4px;
+  padding: 2px 6px;
   background: #0d1117;
   border: 1px solid #30363d;
-  border-radius: 8px;
+  border-radius: 4px;
   color: #8b949e;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 11px;
+  font-size: 9px;
 }
 
 .report-btn:hover {
   border-color: #58a6ff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.1);
 }
 
 .report-btn.is-generated {
   border-color: #3fb950;
 }
 
-.report-icon {
-  font-size: 20px;
-}
-
 .report-name {
-  font-weight: 500;
   color: #e6edf3;
 }
 
@@ -222,29 +194,26 @@ export default {
   font-size: 10px;
 }
 
-.status-ok {
+.report-btn.is-generated .report-status {
   color: #3fb950;
 }
 
-.status-pending {
-  color: #8b949e;
-}
-
 .report-preview {
-  margin-top: 12px;
+  margin-top: 4px;
   border-top: 1px solid #30363d;
-  padding-top: 12px;
+  padding-top: 4px;
+  flex-shrink: 0;
 }
 
 .preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .preview-title {
-  font-size: 12px;
+  font-size: 9px;
   color: #8b949e;
 }
 
@@ -252,9 +221,8 @@ export default {
   background: transparent;
   border: none;
   color: #8b949e;
-  font-size: 18px;
+  font-size: 14px;
   cursor: pointer;
-  padding: 0 4px;
 }
 
 .preview-close:hover {
@@ -263,10 +231,10 @@ export default {
 
 .preview-content {
   background: #0d1117;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid #30363d;
   overflow: hidden;
-  min-height: 100px;
+  min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -274,66 +242,21 @@ export default {
 
 .preview-content img {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 120px;
   object-fit: contain;
-  padding: 8px;
+  padding: 4px;
 }
 
-.preview-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
+::-webkit-scrollbar {
+  width: 3px;
 }
 
-.btn-download, .btn-download-dot {
-  padding: 4px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #30363d;
+::-webkit-scrollbar-track {
+  background: #0d1117;
 }
 
-.btn-download {
-  background: #58a6ff;
-  color: #0d1117;
-  border-color: #58a6ff;
-}
-
-.btn-download:hover {
-  background: #79c0ff;
-}
-
-.btn-download-dot {
-  background: transparent;
-  color: #8b949e;
-}
-
-.btn-download-dot:hover {
-  border-color: #58a6ff;
-  color: #e6edf3;
-}
-
-@media (max-width: 600px) {
-  .reports-panel {
-    padding: 12px 14px;
-  }
-  .reports-grid {
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  }
-  .report-btn {
-    padding: 6px 2px;
-    font-size: 10px;
-  }
-  .report-icon {
-    font-size: 16px;
-  }
-  .preview-content img {
-    max-height: 200px;
-  }
-  .preview-actions {
-    flex-direction: column;
-  }
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 2px;
 }
 </style>

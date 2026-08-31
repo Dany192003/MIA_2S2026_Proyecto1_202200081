@@ -1,10 +1,7 @@
 <template>
   <div class="command-input">
     <div class="input-header">
-      <div class="header-left">
-        <span class="icon">⌨</span>
-        <h3>Entrada de Comandos</h3>
-      </div>
+      <span class="input-label">Entrada</span>
       <div class="connection-status">
         <span class="status-dot" :class="backendOnline ? 'online' : 'offline'"></span>
         <span class="status-text" :class="backendOnline ? 'online' : 'offline'">
@@ -12,43 +9,29 @@
         </span>
       </div>
     </div>
-    
+
     <div class="input-group">
       <textarea
         v-model="command"
-        placeholder="Ej: mkdisk -size=100 -path=/home/disk.dk"
-        rows="6"
+        placeholder="Ej: mkdisk -size=100 -path=discos/disco.mia"
         class="command-textarea"
         @keydown.ctrl.enter="submitCommand"
-        @input="autoResize"
         ref="textarea"
       ></textarea>
     </div>
-    
+
     <div class="button-group">
-      <button @click="submitCommand" class="btn-primary" :disabled="loading || !backendOnline">
-        <span v-if="!loading">▶ Ejecutar</span>
-        <span v-else class="loading-text">
-          <span class="spinner-small"></span>
-          Procesando...
-        </span>
+      <button class="btn-primary" @click="submitCommand" :disabled="loading || !backendOnline">
+        <span v-if="!loading">Ejecutar</span>
+        <span v-else>Procesando...</span>
       </button>
-      <button @click="clearCommand" class="btn-secondary">
-        🗑 Limpiar
-      </button>
+      <button class="btn-secondary" @click="clearCommand">Limpiar</button>
     </div>
-    
+
     <FileUpload @file-loaded="onFileLoaded" />
-    
-    <div class="status-bar" v-if="loading">
-      <div class="status-indicator">
-        <div class="spinner"></div>
-        <span>Enviando comando al servidor...</span>
-      </div>
-    </div>
-    
+
     <div class="shortcuts">
-      <span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> para ejecutar</span>
+      <span>Ctrl + Enter para ejecutar</span>
     </div>
   </div>
 </template>
@@ -78,67 +61,52 @@ export default {
       const status = await checkBackendStatus()
       this.backendOnline = status.online
     },
-    
+
     async submitCommand() {
       if (!this.command.trim()) {
         this.$emit('command-submitted', {
           success: false,
-          message: '⚠️ Por favor ingresa un comando',
-          errors: [{ message: 'Comando vacío' }]
+          message: 'Error: Ingrese un comando',
+          errors: [{ message: 'Comando vacio' }]
         })
         return
       }
-      
+
       if (!this.backendOnline) {
         this.$emit('command-submitted', {
           success: false,
-          message: '❌ Backend no disponible',
-          errors: [{ message: 'Servidor no está corriendo en http://localhost:8080' }]
+          message: 'Error: Backend no disponible',
+          errors: [{ message: 'Servidor no esta corriendo en http://localhost:8080' }]
         })
         return
       }
-      
+
       this.loading = true
-      
+
       const result = await analyzeCommand(this.command)
-      
+
       if (result.success) {
         this.$emit('command-submitted', result.data)
       } else {
         this.$emit('command-submitted', {
           success: false,
-          message: '❌ Error',
+          message: 'Error en la ejecucion',
           errors: [{ message: result.error || 'Error desconocido' }]
         })
       }
-      
+
       this.loading = false
     },
-    
+
     clearCommand() {
       this.command = ''
       this.$emit('command-submitted', null)
-      this.autoResize()
     },
-    
-    autoResize() {
-      const textarea = this.$refs.textarea
-      if (textarea) {
-        textarea.style.height = 'auto'
-        textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
-      }
-    },
-    
+
     onFileLoaded(data) {
       if (data.commands && data.commands.length > 0) {
         this.command = data.commands.join('\n')
-        this.autoResize()
       }
-    }
-  },
-  watch: {
-    command() {
-      this.autoResize()
     }
   }
 }
@@ -148,7 +116,7 @@ export default {
 .command-input {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   height: 100%;
 }
 
@@ -156,39 +124,24 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #30363d;
-  flex-wrap: wrap;
-  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #21262d;
+  flex-shrink: 0;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.icon {
-  font-size: 16px;
-  color: #8b949e;
-}
-
-.input-header h3 {
-  margin: 0;
-  font-size: 13px;
+.input-label {
+  font-size: 10px;
   font-weight: 600;
-  color: #e6edf3;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .connection-status {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #0d1117;
-  padding: 2px 10px 2px 6px;
-  border-radius: 12px;
-  border: 1px solid #30363d;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .status-dot {
@@ -216,23 +169,23 @@ export default {
 
 .input-group {
   flex: 1;
-  min-height: 120px;
+  min-height: 0;
 }
 
 .command-textarea {
   width: 100%;
   height: 100%;
-  min-height: 120px;
-  padding: 10px 14px;
+  min-height: 60px;
+  padding: 8px 12px;
   background: #0d1117;
   color: #e6edf3;
   border: 1px solid #30363d;
-  border-radius: 8px;
+  border-radius: 6px;
   font-family: 'Courier New', monospace;
-  font-size: 14px;
-  resize: vertical;
+  font-size: 13px;
+  resize: none;
   transition: border-color 0.3s ease;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .command-textarea:focus {
@@ -246,18 +199,19 @@ export default {
 
 .button-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .btn-primary {
   flex: 1;
-  padding: 8px 20px;
+  padding: 6px 16px;
   background: #58a6ff;
   color: #0d1117;
   border: none;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -272,13 +226,13 @@ export default {
 }
 
 .btn-secondary {
-  padding: 8px 16px;
+  padding: 6px 14px;
   background: transparent;
   color: #8b949e;
   border: 1px solid #30363d;
   border-radius: 6px;
   font-weight: 500;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -288,84 +242,23 @@ export default {
   color: #e6edf3;
 }
 
-.loading-text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.spinner-small {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(13, 17, 23, 0.3);
-  border-top-color: #0d1117;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.status-bar {
-  background: #161b22;
-  border-radius: 6px;
-  padding: 6px 12px;
-  border-left: 3px solid #58a6ff;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #8b949e;
-  font-size: 12px;
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #30363d;
-  border-top-color: #58a6ff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  flex-shrink: 0;
-}
-
 .shortcuts {
   text-align: center;
-  font-size: 10px;
-  color: #30363d;
-}
-
-.shortcuts kbd {
-  display: inline-block;
-  padding: 0 6px;
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 4px;
   font-size: 9px;
-  font-family: monospace;
-  color: #8b949e;
+  color: #30363d;
+  flex-shrink: 0;
+  padding-top: 2px;
 }
 
-@media (max-width: 600px) {
-  .input-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .button-group {
-    flex-direction: column;
+@media (max-width: 480px) {
+  .command-textarea {
+    font-size: 12px;
+    padding: 6px 10px;
+    min-height: 50px;
   }
   .btn-primary, .btn-secondary {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-  .command-textarea {
-    font-size: 13px;
-    padding: 8px 12px;
-    min-height: 100px;
+    font-size: 11px;
+    padding: 4px 10px;
   }
 }
 </style>
