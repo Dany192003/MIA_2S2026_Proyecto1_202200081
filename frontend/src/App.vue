@@ -3,16 +3,18 @@
     <AppHeader />
 
     <main class="main-content">
-      <!-- TERMINAL: PROTAGONISTA - GRANDE -->
+      <!-- TERMINAL -->
       <div class="terminal-section">
         <CommandTerminal @command-executed="handleCommandExecuted" />
       </div>
 
-      <!-- PANELES INFERIORES: PEQUEÑOS -->
+      <!-- DASHBOARD - SIEMPRE ABAJO -->
+      <div class="dashboard-section">
+        <SystemSummary ref="systemSummary" />
+      </div>
+
+      <!-- PANELES INFERIORES -->
       <div class="panels-section">
-        <div class="panel-item">
-          <SystemSummary ref="systemSummary" />
-        </div>
         <div class="panel-item">
           <DiskList ref="diskList" />
         </div>
@@ -64,34 +66,50 @@ export default {
   box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 #app {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: #0d1117;
   color: #e6edf3;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
 }
 
+/* ============================================================
+   HEADER: FIJO ARRIBA
+   ============================================================ */
+.app-header {
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   MAIN: OCUPA TODO EL ESPACIO RESTANTE CON SCROLL
+   ============================================================ */
 .main-content {
   flex: 1;
   padding: 10px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
   min-height: 0;
-  max-width: 100%;
-  width: 100%;
-  margin: 0 auto;
 }
 
 /* ============================================================
-   TERMINAL: PROTAGONISTA - OCUPA CASI TODO
+   TERMINAL: TAMAÑO FLEXIBLE CON MINIMO
    ============================================================ */
 .terminal-section {
-  flex: 1;
-  min-height: 500px;
-  max-height: 70vh;
+  flex: 0 0 auto;
+  min-height: 350px;
+  max-height: 65vh;
   overflow: hidden;
 }
 
@@ -100,15 +118,22 @@ export default {
 }
 
 /* ============================================================
-   PANELES INFERIORES: 4 COLUMNAS PEQUEÑAS
+   DASHBOARD: SIEMPRE VISIBLE
+   ============================================================ */
+.dashboard-section {
+  flex: 0 0 auto;
+}
+
+/* ============================================================
+   PANELES INFERIORES: 3 COLUMNAS
    ============================================================ */
 .panels-section {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   flex: 0 0 auto;
-  min-height: 120px;
-  max-height: 200px;
+  min-height: 140px;
+  max-height: 220px;
 }
 
 .panel-item {
@@ -126,44 +151,55 @@ export default {
 }
 
 /* ============================================================
+   FOOTER: FIJO ABAJO
+   ============================================================ */
+.app-footer {
+  flex-shrink: 0;
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 1024px) {
   .panels-section {
     grid-template-columns: 1fr 1fr;
-    max-height: 280px;
-  }
-  .terminal-section {
-    min-height: 400px;
-    max-height: 60vh;
-  }
-}
-
-@media (max-width: 640px) {
-  .main-content {
-    padding: 6px 10px;
-    gap: 6px;
+    max-height: 260px;
   }
   .terminal-section {
     min-height: 300px;
     max-height: 55vh;
   }
-  .panels-section {
-    grid-template-columns: 1fr 1fr;
-    max-height: 300px;
-    min-height: 160px;
-  }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
+  .main-content {
+    padding: 8px 12px;
+    gap: 8px;
+  }
   .terminal-section {
     min-height: 250px;
     max-height: 50vh;
   }
   .panels-section {
-    grid-template-columns: 1fr;
-    max-height: 400px;
+    grid-template-columns: 1fr 1fr;
+    max-height: 280px;
+    min-height: 160px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .terminal-section {
     min-height: 200px;
+    max-height: 45vh;
+  }
+  .panels-section {
+    grid-template-columns: 1fr;
+    max-height: 350px;
+    min-height: 180px;
   }
 }
 </style>

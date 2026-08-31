@@ -60,7 +60,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 350px;
+  min-height: 300px;
   overflow: hidden;
 }
 
@@ -125,7 +125,7 @@ export default {
 }
 
 .terminal-left {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-right: 1px solid #30363d;
   overflow: hidden;
   display: flex;
@@ -147,12 +147,12 @@ export default {
 
 .terminal-left .command-input .command-textarea {
   height: 100%;
-  min-height: 80px;
+  min-height: 60px;
   resize: none;
 }
 
 .terminal-right {
-  padding: 10px 14px;
+  padding: 8px 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -186,7 +186,7 @@ export default {
 
 @media (max-width: 768px) {
   .command-terminal {
-    min-height: 280px;
+    min-height: 250px;
   }
   .terminal-grid {
     grid-template-columns: 1fr;
@@ -195,25 +195,25 @@ export default {
     border-right: none;
     border-bottom: 1px solid #30363d;
     max-height: 45%;
-    padding: 8px 12px;
+    padding: 6px 10px;
   }
   .terminal-right {
     max-height: 55%;
-    padding: 8px 12px;
+    padding: 6px 10px;
   }
 }
 
 @media (max-width: 480px) {
   .command-terminal {
-    min-height: 220px;
+    min-height: 200px;
   }
   .terminal-left {
     max-height: 40%;
-    padding: 6px 10px;
+    padding: 4px 8px;
   }
   .terminal-right {
     max-height: 60%;
-    padding: 6px 10px;
+    padding: 4px 8px;
   }
   .terminal-header {
     padding: 4px 10px;
