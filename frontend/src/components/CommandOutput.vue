@@ -26,7 +26,6 @@
       <div v-else class="output-scroll">
         <!-- Resultado individual -->
         <div v-if="result && !result._batch" class="result-item">
-          <!-- Cabecera -->
           <div class="result-header">
             <span class="result-status" :class="result.success ? 'status-ok' : 'status-err'">
               {{ result.success ? '✔' : '✘' }}
@@ -34,13 +33,10 @@
             <span class="result-command">{{ result.command }}</span>
             <span class="result-time">{{ currentTime }}</span>
           </div>
-
-          <!-- Mensaje -->
           <div class="result-message" :class="result.success ? 'msg-ok' : 'msg-err'">
             {{ result.message }}
           </div>
 
-          <!-- Errores -->
           <div v-if="result.errors && result.errors.length > 0" class="result-errors">
             <div v-for="(err, idx) in result.errors" :key="idx" class="error-line">
               <span class="error-type">{{ err.type }}</span>
@@ -49,7 +45,6 @@
             </div>
           </div>
 
-          <!-- Datos (JSON) - SIEMPRE VISIBLE -->
           <div v-if="result.data && Object.keys(result.data).length > 0" class="result-data">
             <div class="data-header" @click="toggleData">
               <span class="data-toggle" :class="{ open: !showData }">▼</span>
@@ -59,7 +54,6 @@
             <pre v-show="showData" class="data-content">{{ JSON.stringify(result.data, null, 2) }}</pre>
           </div>
 
-          <!-- Tokens -->
           <div v-if="result.tokens && result.tokens.length > 0" class="result-tokens">
             <div class="tokens-header" @click="toggleTokens">
               <span class="tokens-toggle" :class="{ open: !showTokens }">▼</span>
@@ -82,7 +76,7 @@
           </div>
         </div>
 
-        <!-- Resultados por lote - CORREGIDO: TODO EN UNA SOLA LÍNEA -->
+        <!-- Resultados por lote - DOS LÍNEAS POR COMANDO -->
         <div v-if="batchResults.length > 0" class="batch-results">
           <div class="batch-summary">
             <span>Batch: {{ batchSuccess }}/{{ batchTotal }} OK</span>
@@ -91,10 +85,14 @@
             </span>
           </div>
           <div v-for="item in batchResults" :key="item.index" class="batch-item" :class="item.result.success ? 'batch-ok' : 'batch-err'">
-            <span class="batch-idx">[{{ item.index }}]</span>
-            <span class="batch-status">{{ item.result.success ? '✔' : '✘' }}</span>
-            <span class="batch-cmd">{{ item.command }}</span>
-            <span class="batch-msg">{{ item.result.message }}</span>
+            <div class="batch-line1">
+              <span class="batch-idx">[{{ item.index }}]</span>
+              <span class="batch-status">{{ item.result.success ? '✔' : '✘' }}</span>
+              <span class="batch-cmd">{{ item.command }}</span>
+            </div>
+            <div class="batch-line2">
+              <span class="batch-msg">{{ item.result.message }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -609,7 +607,7 @@ export default {
 }
 
 /* ============================================================
-   BATCH RESULTS - CORREGIDO: TODO EN UNA SOLA LÍNEA
+   BATCH RESULTS - DOS LÍNEAS POR COMANDO
    ============================================================ */
 .batch-results {
   display: flex;
@@ -647,17 +645,12 @@ export default {
 
 .batch-item {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
+  flex-direction: column;
+  padding: 3px 8px;
   border-radius: 3px;
-  font-size: 11px;
   background: #1e1e2e;
   border-left: 2px solid #45475a;
-  flex-wrap: nowrap;
-  overflow: hidden;
-  min-height: 22px;
-  line-height: 1.4;
+  gap: 1px;
 }
 
 .batch-item.batch-ok {
@@ -666,6 +659,13 @@ export default {
 
 .batch-item.batch-err {
   border-left-color: #f38ba8;
+}
+
+.batch-line1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .batch-idx {
@@ -691,21 +691,18 @@ export default {
 .batch-cmd {
   color: #89b4fa;
   font-size: 10px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 280px;
+  word-break: break-all;
+  flex: 1;
+}
+
+.batch-line2 {
+  padding-left: 40px;
 }
 
 .batch-msg {
   font-size: 10px;
   color: #a6adc8;
-  flex-shrink: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 300px;
+  word-break: break-word;
 }
 
 .batch-ok .batch-msg {
@@ -735,30 +732,5 @@ export default {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #89b4fa;
-}
-
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-@media (max-width: 768px) {
-  .batch-cmd {
-    max-width: 120px;
-  }
-  .batch-msg {
-    max-width: 140px;
-  }
-}
-
-@media (max-width: 480px) {
-  .batch-cmd {
-    max-width: 80px;
-  }
-  .batch-msg {
-    max-width: 100px;
-  }
-  .batch-idx {
-    min-width: 24px;
-    font-size: 8px;
-  }
 }
 </style>
