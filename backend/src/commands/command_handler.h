@@ -69,6 +69,7 @@ private:
     CommandResult processRep(const json& params);
     CommandResult processLsdisk(const json& params);
     CommandResult processLsjson(const json& params);
+    CommandResult processLsreports(const json& params);
 };
 
 #endif

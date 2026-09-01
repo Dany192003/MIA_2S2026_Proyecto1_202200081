@@ -294,11 +294,9 @@ std::string Ext2Utils::readFile(const std::string& diskPath, const std::string& 
         if (inode.i_block[i] == -1) break;
         
         if (i < 12) {
-            // Bloque directo
             BlockFile block = readBlockFile(disk, sb, inode.i_block[i]);
             content += std::string(block.b_content, 64);
         } else if (i == 12) {
-            // Bloque simple indirecto
             BlockPointer pointer = readBlockPointer(disk, sb, inode.i_block[i]);
             for (int j = 0; j < 16; j++) {
                 if (pointer.b_pointer[j] == -1) break;
@@ -306,7 +304,6 @@ std::string Ext2Utils::readFile(const std::string& diskPath, const std::string& 
                 content += std::string(block.b_content, 64);
             }
         } else if (i == 13) {
-            // Bloque doble indirecto
             BlockPointer pointer1 = readBlockPointer(disk, sb, inode.i_block[i]);
             for (int j = 0; j < 16; j++) {
                 if (pointer1.b_pointer[j] == -1) break;
@@ -318,7 +315,6 @@ std::string Ext2Utils::readFile(const std::string& diskPath, const std::string& 
                 }
             }
         } else if (i == 14) {
-            // Bloque triple indirecto
             BlockPointer pointer1 = readBlockPointer(disk, sb, inode.i_block[i]);
             for (int j = 0; j < 16; j++) {
                 if (pointer1.b_pointer[j] == -1) break;
@@ -340,6 +336,10 @@ std::string Ext2Utils::readFile(const std::string& diskPath, const std::string& 
     content = content.c_str();
     return content;
 }
+
+// ============================================================
+// writeFile - CORREGIDO
+// ============================================================
 
 bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePath, 
                           const std::string& content, const Superblock& sb, 
@@ -376,10 +376,32 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         return false;
     }
     
-    // Verificar si el archivo ya existe
+    // ============================================================
+    // ✅ CORREGIDO: Manejar sobrescritura de archivo existente
+    // ============================================================
     int existingInode = findInodeByPath(diskPath, filePath, sb, mbr, partitionIndex);
     if (existingInode != -1) {
-        // Eliminar el archivo existente
+        // 1. Limpiar la entrada en la carpeta padre
+        for (int i = 0; i < 12; i++) {
+            if (parentInode.i_block[i] != -1) {
+                BlockFolder folderBlock = readBlockFolder(disk, sb, parentInode.i_block[i]);
+                bool modified = false;
+                for (int j = 0; j < 4; j++) {
+                    std::string name(folderBlock.b_content[j].b_name);
+                    name = name.c_str();
+                    if (name == fileName) {
+                        memset(folderBlock.b_content[j].b_name, 0, 12);
+                        folderBlock.b_content[j].b_inodo = -1;
+                        writeBlockFolder(disk, sb, parentInode.i_block[i], folderBlock);
+                        modified = true;
+                        break;
+                    }
+                }
+                if (modified) break;
+            }
+        }
+        
+        // 2. Liberar el inodo y bloques viejos
         Inode existing = readInode(disk, sb, existingInode);
         for (int i = 0; i < 16; i++) {
             if (existing.i_block[i] != -1) {
@@ -389,6 +411,9 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         markInodeFree(disk, sb, existingInode);
     }
     
+    // ============================================================
+    // Crear nuevo inodo
+    // ============================================================
     int newInodeIndex = findFreeInode(disk, sb);
     if (newInodeIndex == -1) {
         disk.close();
@@ -399,24 +424,13 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
     int numBlocks = (contentSize + BLOCK_SIZE - 1) / BLOCK_SIZE;
     if (numBlocks < 1) numBlocks = 1;
     
-    // Calcular cuántos bloques directos e indirectos necesitamos
     int directBlocks = std::min(numBlocks, 12);
     int remaining = numBlocks - directBlocks;
-    int simpleIndirect = 0;
-    int doubleIndirect = 0;
-    int tripleIndirect = 0;
+    int simpleIndirect = 0, doubleIndirect = 0, tripleIndirect = 0;
     
-    if (remaining > 0) {
-        simpleIndirect = 1;
-        remaining -= 16;
-    }
-    if (remaining > 0) {
-        doubleIndirect = 1;
-        remaining -= 256;
-    }
-    if (remaining > 0) {
-        tripleIndirect = 1;
-    }
+    if (remaining > 0) { simpleIndirect = 1; remaining -= 16; }
+    if (remaining > 0) { doubleIndirect = 1; remaining -= 256; }
+    if (remaining > 0) { tripleIndirect = 1; }
     
     int totalBlocks = directBlocks + simpleIndirect + doubleIndirect + tripleIndirect;
     if (totalBlocks > 16) totalBlocks = 16;
@@ -424,7 +438,6 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
     int blockIndices[16];
     for (int i = 0; i < 16; i++) blockIndices[i] = -1;
     
-    // Asignar bloques directos
     for (int i = 0; i < directBlocks; i++) {
         int blockIndex = findFreeBlock(disk, sb);
         if (blockIndex == -1) {
@@ -435,7 +448,6 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         markBlockUsed(disk, sb, blockIndex);
     }
     
-    // Asignar bloque simple indirecto
     if (simpleIndirect > 0) {
         int blockIndex = findFreeBlock(disk, sb);
         if (blockIndex == -1) {
@@ -446,7 +458,6 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         markBlockUsed(disk, sb, blockIndex);
     }
     
-    // Asignar bloque doble indirecto
     if (doubleIndirect > 0) {
         int blockIndex = findFreeBlock(disk, sb);
         if (blockIndex == -1) {
@@ -457,7 +468,6 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         markBlockUsed(disk, sb, blockIndex);
     }
     
-    // Asignar bloque triple indirecto
     if (tripleIndirect > 0) {
         int blockIndex = findFreeBlock(disk, sb);
         if (blockIndex == -1) {
@@ -498,9 +508,6 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         offset += BLOCK_SIZE;
     }
     
-    // Escribir datos en bloques indirectos (simplificado)
-    // Nota: Esta es una implementación simplificada de indirectos
-    
     // Actualizar carpeta padre
     int blockIndex = parentInode.i_block[0];
     if (blockIndex == -1) {
@@ -524,15 +531,29 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
     
     BlockFolder folderBlock = readBlockFolder(disk, sb, blockIndex);
     bool added = false;
+    
+    // ✅ Verificar si ya existe (seguridad extra)
     for (int i = 0; i < 4; i++) {
         std::string name(folderBlock.b_content[i].b_name);
         name = name.c_str();
-        if (name.empty() || folderBlock.b_content[i].b_inodo == -1) {
-            strncpy(folderBlock.b_content[i].b_name, fileName.c_str(), 11);
-            folderBlock.b_content[i].b_inodo = newInodeIndex;
-            writeBlockFolder(disk, sb, blockIndex, folderBlock);
+        if (name == fileName && folderBlock.b_content[i].b_inodo != -1) {
             added = true;
             break;
+        }
+    }
+    
+    // ✅ Insertar en slot libre
+    if (!added) {
+        for (int i = 0; i < 4; i++) {
+            std::string name(folderBlock.b_content[i].b_name);
+            name = name.c_str();
+            if (name.empty() || folderBlock.b_content[i].b_inodo == -1) {
+                strncpy(folderBlock.b_content[i].b_name, fileName.c_str(), 11);
+                folderBlock.b_content[i].b_inodo = newInodeIndex;
+                writeBlockFolder(disk, sb, blockIndex, folderBlock);
+                added = true;
+                break;  // ✅ CRUCIAL: SALIR DESPUÉS DE INSERTAR
+            }
         }
     }
     
@@ -546,7 +567,7 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
 }
 
 // ============================================================
-// CREAR CARPETAS (COMPLETO)
+// CREAR CARPETAS
 // ============================================================
 
 bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& dirPath,
@@ -605,20 +626,11 @@ bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& 
     }
     markBlockUsed(disk, sb, blockIndex);
     
-    // Inicializar bloque de carpeta con "." y ".."
+    // Inicializar bloque de carpeta
     BlockFolder folderBlock;
     memset(&folderBlock, 0, sizeof(BlockFolder));
     
-    // Entrada "." (apunta a sí mismo)
-    strncpy(folderBlock.b_content[0].b_name, ".", 1);
-    folderBlock.b_content[0].b_inodo = newInodeIndex;
-    
-    // Entrada ".." (apunta al padre)
-    strncpy(folderBlock.b_content[1].b_name, "..", 2);
-    folderBlock.b_content[1].b_inodo = parentInodeIndex;
-    
-    // Las demás entradas vacías
-    for (int i = 2; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
         folderBlock.b_content[i].b_inodo = -1;
         memset(folderBlock.b_content[i].b_name, 0, 12);
     }
@@ -667,6 +679,7 @@ bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& 
     
     BlockFolder parentFolder = readBlockFolder(disk, sb, parentBlockIndex);
     bool added = false;
+    
     for (int i = 0; i < 4; i++) {
         std::string name(parentFolder.b_content[i].b_name);
         name = name.c_str();
@@ -675,7 +688,7 @@ bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& 
             parentFolder.b_content[i].b_inodo = newInodeIndex;
             writeBlockFolder(disk, sb, parentBlockIndex, parentFolder);
             added = true;
-            break;
+            break;  // ✅ CRUCIAL: SALIR DESPUÉS DE INSERTAR
         }
     }
     

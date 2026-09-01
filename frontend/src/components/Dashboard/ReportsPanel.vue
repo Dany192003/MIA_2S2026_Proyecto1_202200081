@@ -2,8 +2,8 @@
   <div class="reports-panel">
     <div class="reports-header">
       <span class="reports-title">Reportes</span>
-      <span class="reports-badge">{{ reportCount }}</span>
-      <button class="btn-refresh" @click="getMountId" title="Actualizar">↻</button>
+      <span class="reports-badge">{{ reportFiles.length }}</span>
+      <button class="btn-refresh" @click="refresh" title="Actualizar">↻</button>
     </div>
 
     <div class="reports-tabs">
@@ -14,23 +14,42 @@
       </button>
     </div>
 
-    <div class="reports-grid">
-      <button v-for="report in currentReports" :key="report.name" 
-              class="report-btn" :class="{ 'is-generated': report.generated }" 
-              @click="generateReport(report)">
-        <span class="report-name">{{ report.name }}</span>
-        <span class="report-status">{{ report.generated ? '✓' : '·' }}</span>
-      </button>
+    <div class="reports-list">
+      <div v-if="filteredReports.length === 0" class="empty-state">
+        <p>No hay reportes generados</p>
+        <span class="hint">Usa el comando <kbd>rep</kbd> para generar reportes</span>
+      </div>
+      <div v-for="report in filteredReports" :key="report.name" 
+           class="report-item"
+           @click="viewReport(report)">
+        <div class="report-info">
+          <span class="report-icon">{{ report.type === 'image' ? '🖼️' : report.type === 'dot' ? '📊' : '📄' }}</span>
+          <span class="report-name">{{ report.name }}</span>
+          <span class="report-size">{{ formatSize(report.size) }}</span>
+        </div>
+        <div class="report-status">
+          <span class="status-ok">✅ {{ report.path }}</span>
+        </div>
+      </div>
     </div>
 
-    <div v-if="previewImage" class="report-preview">
+    <!-- Vista previa -->
+    <div v-if="selectedReport" class="report-preview">
       <div class="preview-header">
-        <span class="preview-title">{{ previewName }}</span>
+        <span class="preview-title">{{ selectedReport.name }}</span>
+        <span class="preview-path">{{ selectedReport.path }}</span>
         <button class="preview-close" @click="closePreview">×</button>
       </div>
       <div class="preview-content">
-        <img v-if="isImage" :src="previewImage" alt="Reporte" @error="handleImageError" />
-        <pre v-else class="text-preview">{{ previewText }}</pre>
+        <img v-if="selectedReport.type === 'image'" 
+             :src="selectedReport.preview || selectedReport.path" 
+             alt="Reporte" 
+             @error="handleImageError" />
+        <pre v-else class="text-preview">{{ previewContent }}</pre>
+      </div>
+      <div class="preview-actions">
+        <button class="btn-download" @click="downloadReport">📥 Descargar</button>
+        <button class="btn-copy" @click="copyPath">📋 Copiar ruta</button>
       </div>
     </div>
   </div>
@@ -44,122 +63,118 @@ export default {
   data() {
     return {
       activeTab: 'sistema',
-      reportCount: 0,
       mountId: '',
-      previewImage: null,
-      previewText: '',
-      previewName: '',
-      isImage: true,
+      selectedReport: null,
+      previewContent: '',
+      reportFiles: [],
       reportTabs: [
         { key: 'sistema', label: 'Sistema' },
         { key: 'archivos', label: 'Archivos' },
         { key: 'bitmaps', label: 'Bitmaps' }
       ],
-      reports: {
-        sistema: [
-          { name: 'MBR', generated: false, type: 'image' },
-          { name: 'DISK', generated: false, type: 'image' },
-          { name: 'SB', generated: false, type: 'image' }
-        ],
-        archivos: [
-          { name: 'INODE', generated: false, type: 'image' },
-          { name: 'BLOCK', generated: false, type: 'image' },
-          { name: 'TREE', generated: false, type: 'image' },
-          { name: 'LS', generated: false, type: 'image' }
-        ],
-        bitmaps: [
-          { name: 'bm_inode', generated: false, type: 'text' },
-          { name: 'bm_block', generated: false, type: 'text' },
-          { name: 'FILE', generated: false, type: 'text' }
-        ]
+      reportTypes: {
+        'mbr': 'sistema',
+        'disk': 'sistema',
+        'sb': 'sistema',
+        'inode': 'archivos',
+        'block': 'archivos',
+        'tree': 'archivos',
+        'ls': 'archivos',
+        'bm_inode': 'bitmaps',
+        'bm_block': 'bitmaps',
+        'file': 'bitmaps'
       }
     }
   },
   computed: {
-    currentReports() {
-      return this.reports[this.activeTab] || []
+    filteredReports() {
+      const baseNameMap = {
+        'mbr': 'mbr',
+        'disk': 'disk',
+        'sb': 'sb',
+        'inode': 'inode',
+        'block': 'block',
+        'tree': 'tree',
+        'ls': 'ls',
+        'bm_inode': 'bm_inode',
+        'bm_block': 'bm_block',
+        'file': 'file'
+      }
+      
+      return this.reportFiles
+        .filter(r => {
+          // Obtener el nombre base del archivo
+          let baseName = r.name.replace(/\.(png|txt|dot)$/, '').toLowerCase()
+          // Si tiene timestamp, quitarlo
+          baseName = baseName.replace(/_[0-9]+$/, '')
+          
+          const tab = this.reportTypes[baseName] || 'sistema'
+          return tab === this.activeTab
+        })
+        .map(r => {
+          let baseName = r.name.replace(/\.(png|txt|dot)$/, '').toLowerCase()
+          baseName = baseName.replace(/_[0-9]+$/, '')
+          return {
+            ...r,
+            displayName: baseName.toUpperCase(),
+            type: r.extension === '.png' ? 'image' : r.extension === '.dot' ? 'dot' : 'text'
+          }
+        })
     }
   },
   mounted() {
-    this.getMountId()
+    this.refresh()
   },
   methods: {
-    async getMountId() {
+    async refresh() {
       try {
-        const result = await analyzeCommand('mounted')
-        if (result.success && result.data?.data?.mounted) {
-          const mounted = result.data.data.mounted
-          if (mounted.length > 0) {
-            this.mountId = mounted[0].id || ''
-          }
+        const result = await analyzeCommand('lsreports')
+        console.log('📊 lsreports result:', result)
+        
+        if (result.success && result.data?.data?.reports) {
+          this.reportFiles = result.data.data.reports
+        } else {
+          this.reportFiles = []
         }
       } catch (error) {
-        console.error('Error obteniendo ID de montaje:', error)
+        console.error('Error escaneando reportes:', error)
+        this.reportFiles = []
       }
     },
-    async generateReport(report) {
-      if (!this.mountId) {
-        await this.getMountId()
-        if (!this.mountId) {
-          alert('No hay partición montada. Monta una partición primero.')
-          return
-        }
-      }
-
-      const reportName = report.name.toLowerCase()
-      const isText = report.type === 'text'
-      const ext = isText ? 'txt' : 'png'
+    formatSize(bytes) {
+      if (!bytes || bytes === 0) return '0 B'
+      const k = 1024
+      const sizes = ['B', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+    },
+    viewReport(report) {
+      this.selectedReport = report
+      this.previewContent = ''
       
-      // Generar nombre de archivo con timestamp
-      const timestamp = Date.now()
-      const reportPath = `/home/Edwin/Desktop/MIA_2S2026_Proyecto1_202200081/reports/${reportName}_${timestamp}.${ext}`
-      
-      let command = `rep -name=${reportName} -path=${reportPath} -id=${this.mountId}`
-      
-      // Para reportes file y ls, necesitan path_file_ls
-      if (reportName === 'file') {
-        command += ` -path_file_ls=/users.txt`
-      } else if (reportName === 'ls') {
-        command += ` -path_file_ls=/`
-      }
-
-      try {
-        console.log('📊 Generando reporte:', command)
-        const result = await analyzeCommand(command)
-        console.log('📊 Resultado:', result)
-
-        if (result.success) {
-          report.generated = true
-          this.reportCount++
-
-          if (isText) {
-            // Reportes de texto: mostrar contenido
-            this.isImage = false
-            this.previewText = result.data?.data?.content || 'Reporte generado'
-            this.previewImage = null
-          } else {
-            // Reportes de imagen: mostrar la imagen
-            this.isImage = true
-            // Construir URL para la imagen (servida desde el backend)
-            this.previewImage = `/api/reports/${reportName}_${timestamp}.${ext}`
-            this.previewText = ''
-          }
-          this.previewName = report.name
-        } else {
-          alert(`Error generando reporte: ${result.message}`)
-        }
-      } catch (error) {
-        console.error('Error generando reporte:', error)
-        alert('Error al generar el reporte')
+      // Si es texto, intentar cargar contenido
+      if (report.type === 'text') {
+        // Aquí se podría cargar el contenido del archivo
+        this.previewContent = 'Contenido del reporte de texto...'
       }
     },
     closePreview() {
-      this.previewImage = null
-      this.previewText = ''
-      this.previewName = ''
+      this.selectedReport = null
     },
     handleImageError() {
       console.warn('Error cargando imagen del reporte')
+    },
+    downloadReport() {
+      if (this.selectedReport) {
+        alert(`📥 Descargar reporte:\n${this.selectedReport.path}`)
+      }
+    },
+    copyPath() {
+      if (this.selectedReport) {
+        navigator.clipboard.writeText(this.selectedReport.path)
+          .then(() => alert('📋 Ruta copiada al portapapeles'))
+          .catch(() => alert('📋 Ruta: ' + this.selectedReport.path))
+      }
     }
   }
 }
@@ -249,47 +264,91 @@ export default {
   background: rgba(88, 166, 255, 0.1);
 }
 
-.reports-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
-  gap: 4px;
+.reports-list {
   flex: 1;
   overflow-y: auto;
-  align-content: start;
-}
-
-.report-btn {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 2px 6px;
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
+  justify-content: center;
   color: #8b949e;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 9px;
+  font-size: 11px;
+  padding: 20px 10px;
+  text-align: center;
 }
 
-.report-btn:hover {
-  border-color: #58a6ff;
-}
-
-.report-btn.is-generated {
-  border-color: #3fb950;
-}
-
-.report-name {
+.empty-state kbd {
+  background: #0d1117;
+  padding: 0 6px;
+  border-radius: 3px;
+  border: 1px solid #30363d;
+  font-family: monospace;
+  font-size: 10px;
   color: #e6edf3;
 }
 
-.report-status {
-  font-size: 10px;
+.hint {
+  font-size: 9px;
+  color: #30363d;
+  margin-top: 4px;
 }
 
-.report-btn.is-generated .report-status {
+.report-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 26px;
+}
+
+.report-item:hover {
+  border-color: #58a6ff;
+  background: #161b22;
+}
+
+.report-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-icon {
+  font-size: 12px;
+}
+
+.report-name {
+  font-size: 10px;
+  font-weight: 500;
+  color: #e6edf3;
+}
+
+.report-size {
+  font-size: 8px;
+  color: #30363d;
+}
+
+.report-status {
+  font-size: 8px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-ok {
   color: #3fb950;
+  font-size: 8px;
 }
 
 .report-preview {
@@ -297,20 +356,33 @@ export default {
   border-top: 1px solid #30363d;
   padding-top: 4px;
   flex-shrink: 0;
-  max-height: 150px;
+  max-height: 160px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 6px;
   margin-bottom: 4px;
 }
 
 .preview-title {
   font-size: 9px;
-  color: #8b949e;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.preview-path {
+  font-size: 7px;
+  color: #30363d;
+  font-family: monospace;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .preview-close {
@@ -330,8 +402,8 @@ export default {
   border-radius: 4px;
   border: 1px solid #30363d;
   overflow: auto;
-  min-height: 50px;
-  max-height: 120px;
+  min-height: 40px;
+  max-height: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -340,20 +412,42 @@ export default {
 
 .preview-content img {
   max-width: 100%;
-  max-height: 110px;
+  max-height: 80px;
   object-fit: contain;
 }
 
 .text-preview {
-  font-size: 9px;
+  font-size: 8px;
   color: #a6e3a1;
   font-family: monospace;
   margin: 0;
   padding: 4px;
-  max-height: 110px;
+  max-height: 80px;
   overflow: auto;
   white-space: pre-wrap;
   width: 100%;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.btn-download, .btn-copy {
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-download:hover, .btn-copy:hover {
+  border-color: #58a6ff;
+  color: #e6edf3;
 }
 
 ::-webkit-scrollbar {

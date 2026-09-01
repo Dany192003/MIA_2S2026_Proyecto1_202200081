@@ -81,6 +81,8 @@ CommandResult CommandHandler::processCommand(const std::string& command) {
         processedResult = processLsdisk(params);
     } else if (cmd == "lsjson") {
         processedResult = processLsjson(params);
+    } else if (cmd == "lsreports") {
+        processedResult = processLsreports(params);
     } else {
         processedResult.success = false;
         processedResult.message = "Comando no implementado: " + cmd;

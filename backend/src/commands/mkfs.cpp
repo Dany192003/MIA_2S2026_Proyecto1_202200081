@@ -159,10 +159,9 @@ CommandResult CommandHandler::processMkfs(const json& params) {
         char zeroBlock[BLOCK_SIZE] = {0};
         for (int i = 0; i < numBlocks; i++) disk.write(zeroBlock, BLOCK_SIZE);
         
-        // 15. Crear el inodo raíz ("/") como carpeta válida
-        // IMPORTANTE: un inodo en ceros NO es una carpeta válida para el resto
-        // del código (Ext2Utils compara i_type contra el caracter '0', no contra
-        // el byte 0x00). Sin este paso, findInodeByPath("/...") siempre falla.
+        // ============================================================
+        // 15. Crear el inodo raíz ("/") con bloque de carpeta VACÍO
+        // ============================================================
         Inode rootInode;
         memset(&rootInode, 0, sizeof(Inode));
         rootInode.i_uid = 1;
@@ -172,23 +171,46 @@ CommandResult CommandHandler::processMkfs(const json& params) {
         rootInode.i_ctime = time(nullptr);
         rootInode.i_mtime = time(nullptr);
         for (int i = 0; i < 16; i++) rootInode.i_block[i] = -1;
-        rootInode.i_type = '0'; // '0' = carpeta
+        rootInode.i_type = '0';
         rootInode.i_perm[0] = '7';
         rootInode.i_perm[1] = '7';
         rootInode.i_perm[2] = '5';
+        
+        // Asignar un bloque para la carpeta raíz
+        int rootBlockIndex = Ext2Utils::findFreeBlock(disk, sb);
+        if (rootBlockIndex == -1) {
+            disk.close();
+            result.message = "Error: No hay bloques libres para la carpeta raíz";
+            return result;
+        }
+        
+        rootInode.i_block[0] = rootBlockIndex;
+        Ext2Utils::markBlockUsed(disk, sb, rootBlockIndex);
+        
+        // Inicializar el bloque de carpeta VACÍO (sin entradas . y ..)
+        BlockFolder rootBlock;
+        memset(&rootBlock, 0, sizeof(BlockFolder));
+        for (int i = 0; i < 4; i++) {
+            memset(rootBlock.b_content[i].b_name, 0, 12);
+            rootBlock.b_content[i].b_inodo = -1;
+        }
+        Ext2Utils::writeBlockFolder(disk, sb, rootBlockIndex, rootBlock);
         
         Ext2Utils::writeInode(disk, sb, 0, rootInode);
         Ext2Utils::markInodeUsed(disk, sb, 0);
         
         // Actualizar contadores de libres en el superbloque
+        sb.s_free_blocks_count = sb.s_blocks_count - 1;
         sb.s_free_inodes_count = sb.s_inodes_count - 1;
         
         disk.close();
         
-        // 16. Escribir el superbloque actualizado (con el inodo raíz ya contado)
+        // 16. Escribir el superbloque actualizado
         Ext2Utils::writeSuperblock(diskPath, sb, mbr, partitionIndex);
         
-        // 17. Crear users.txt con el contenido inicial (grupo y usuario root)
+        // ============================================================
+        // 17. Crear users.txt en la raíz (usando writeFile)
+        // ============================================================
         std::string defaultUsers = "1, G, root\n1, U, root, root, 123\n";
         if (!Ext2Utils::writeFile(diskPath, "/users.txt", defaultUsers, sb, mbr, partitionIndex, 1, 1)) {
             result.message = "Error: No se pudo crear users.txt durante el formateo";
