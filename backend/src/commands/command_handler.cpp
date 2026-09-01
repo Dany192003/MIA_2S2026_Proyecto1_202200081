@@ -77,6 +77,8 @@ CommandResult CommandHandler::processCommand(const std::string& command) {
         processedResult = processCat(params);
     } else if (cmd == "rep") {
         processedResult = processRep(params);
+    } else if (cmd == "lsdisk") {
+        processedResult = processLsdisk(params);
     } else {
         processedResult.success = false;
         processedResult.message = "Comando no implementado: " + cmd;

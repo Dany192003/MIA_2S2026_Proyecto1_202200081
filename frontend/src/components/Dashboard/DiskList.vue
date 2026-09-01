@@ -19,15 +19,15 @@
       <div v-for="disk in disks" :key="disk.path" class="disk-item">
         <div class="disk-info">
           <span class="disk-name">{{ disk.name }}</span>
-          <span class="disk-size">{{ disk.size }}</span>
+          <span class="disk-size">{{ formatSize(disk.size) }}</span>
         </div>
         <div class="disk-path">{{ disk.path }}</div>
         <div class="disk-partitions">
           <span v-for="part in disk.partitions" :key="part.name" 
                 class="partition-tag" :class="'tag-' + part.type.toLowerCase()">
-            {{ part.name }} ({{ part.size }})
+            {{ part.name }} ({{ formatSize(part.size) }})
           </span>
-          <span v-if="disk.partitions.length === 0" class="partition-empty">sin particiones</span>
+          <span v-if="!disk.partitions || disk.partitions.length === 0" class="partition-empty">sin particiones</span>
         </div>
       </div>
     </div>
@@ -52,24 +52,38 @@ export default {
     async refresh() {
       this.loading = true
       try {
-        // Obtener discos físicos (archivos .mia)
-        const result = await analyzeCommand('mounted')
-        if (result.success && result.data && result.data.mounted) {
-          // Por ahora, mostrar discos montados
-          // TODO: Escanear carpeta discos/ para encontrar todos los .mia
-          this.disks = result.data.mounted.map(m => ({
-            name: m.disk.split('/').pop(),
-            path: m.disk,
-            size: '10 MB', // TODO: Obtener tamaño real
-            partitions: [
-              { name: 'part1', size: '5 MB', type: 'P' }
-            ]
+        const result = await analyzeCommand('lsdisk')
+        console.log('📀 LSDISK raw result:', result)
+        console.log('📀 result.data:', result.data)
+        console.log('📀 result.data.data:', result.data?.data)
+        
+        // ✅ CORREGIDO: La estructura es result.data.data
+        const backendData = result.data?.data
+        if (backendData && backendData.disks) {
+          this.disks = backendData.disks.map(disk => ({
+            name: disk.name,
+            path: disk.path,
+            size: disk.size,
+            partitions: disk.partitions || [],
+            partition_count: disk.partition_count || 0
           }))
+          console.log('📀 Discos procesados:', this.disks)
+        } else {
+          this.disks = []
+          console.log('📀 No se encontraron discos')
         }
       } catch (error) {
-        console.error('Error actualizando discos:', error)
+        console.error('Error actualizando lista de discos:', error)
+        this.disks = []
       }
       this.loading = false
+    },
+    formatSize(bytes) {
+      if (!bytes || bytes === 0) return '0 B'
+      const k = 1024
+      const sizes = ['B', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     }
   }
 }

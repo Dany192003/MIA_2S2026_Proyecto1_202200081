@@ -142,7 +142,8 @@ void Lexer::identifyCommand() {
         // Administración de carpetas y archivos
         "mkfile", "mkdir", "cat",
         // Reportes
-        "rep"
+        "rep", "lsdisk"
+
     };
     
     if (std::find(validCommands.begin(), validCommands.end(), lowerCommand) != validCommands.end()) {

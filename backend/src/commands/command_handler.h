@@ -67,6 +67,7 @@ private:
     CommandResult processMkdir(const json& params);
     CommandResult processCat(const json& params);
     CommandResult processRep(const json& params);
+    CommandResult processLsdisk(const json& params);
 };
 
 #endif
