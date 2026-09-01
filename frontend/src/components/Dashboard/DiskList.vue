@@ -3,26 +3,31 @@
     <div class="disk-header">
       <span class="disk-title">Discos</span>
       <span class="disk-count">{{ disks.length }}</span>
+      <button class="btn-refresh" @click="refresh" title="Actualizar">↻</button>
     </div>
 
-    <div v-if="disks.length === 0" class="empty-state">
+    <div v-if="loading" class="loading-state">
+      <span>Cargando...</span>
+    </div>
+
+    <div v-else-if="disks.length === 0" class="empty-state">
       <p>Sin discos</p>
+      <span class="hint">Usa mkdisk para crear uno</span>
     </div>
 
     <div v-else class="disk-items">
-      <div v-for="disk in disks" :key="disk.name" class="disk-item">
+      <div v-for="disk in disks" :key="disk.path" class="disk-item">
         <div class="disk-info">
           <span class="disk-name">{{ disk.name }}</span>
-          <span class="disk-size">{{ disk.size }}{{ disk.unit }}</span>
+          <span class="disk-size">{{ disk.size }}</span>
         </div>
-        <div class="disk-progress">
-          <div class="progress-bar" :style="{ width: disk.usedPercent + '%', background: disk.color }"></div>
-        </div>
+        <div class="disk-path">{{ disk.path }}</div>
         <div class="disk-partitions">
-          <span v-for="part in disk.partitions" :key="part.name" class="partition-tag" :class="'tag-' + part.type.toLowerCase()">
-            {{ part.name }}
+          <span v-for="part in disk.partitions" :key="part.name" 
+                class="partition-tag" :class="'tag-' + part.type.toLowerCase()">
+            {{ part.name }} ({{ part.size }})
           </span>
-          <span v-if="disk.partitions.length === 0" class="partition-empty">vacio</span>
+          <span v-if="disk.partitions.length === 0" class="partition-empty">sin particiones</span>
         </div>
       </div>
     </div>
@@ -30,16 +35,41 @@
 </template>
 
 <script>
+import { analyzeCommand } from '../../services/api.js'
+
 export default {
   name: 'DiskList',
   data() {
     return {
-      disks: []
+      disks: [],
+      loading: false
     }
   },
+  mounted() {
+    this.refresh()
+  },
   methods: {
-    refresh() {
-      console.log('Actualizando lista de discos...')
+    async refresh() {
+      this.loading = true
+      try {
+        // Obtener discos físicos (archivos .mia)
+        const result = await analyzeCommand('mounted')
+        if (result.success && result.data && result.data.mounted) {
+          // Por ahora, mostrar discos montados
+          // TODO: Escanear carpeta discos/ para encontrar todos los .mia
+          this.disks = result.data.mounted.map(m => ({
+            name: m.disk.split('/').pop(),
+            path: m.disk,
+            size: '10 MB', // TODO: Obtener tamaño real
+            partitions: [
+              { name: 'part1', size: '5 MB', type: 'P' }
+            ]
+          }))
+        }
+      } catch (error) {
+        console.error('Error actualizando discos:', error)
+      }
+      this.loading = false
     }
   }
 }
@@ -82,13 +112,36 @@ export default {
   border: 1px solid #30363d;
 }
 
-.empty-state {
+.btn-refresh {
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  border-radius: 4px;
+  padding: 0 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.btn-refresh:hover {
+  border-color: #58a6ff;
+  color: #e6edf3;
+}
+
+.loading-state, .empty-state {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #8b949e;
   font-size: 12px;
+}
+
+.hint {
+  font-size: 9px;
+  color: #30363d;
+  margin-top: 4px;
 }
 
 .disk-items {
@@ -96,13 +149,13 @@ export default {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .disk-item {
   background: #0d1117;
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border: 1px solid #30363d;
 }
 
@@ -110,45 +163,39 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
 }
 
 .disk-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: #e6edf3;
 }
 
 .disk-size {
-  font-size: 10px;
+  font-size: 9px;
   color: #8b949e;
 }
 
-.disk-progress {
-  width: 100%;
-  height: 3px;
-  background: #30363d;
-  border-radius: 2px;
+.disk-path {
+  font-size: 8px;
+  color: #30363d;
+  font-family: monospace;
+  margin-bottom: 2px;
   overflow: hidden;
-  margin-bottom: 4px;
-}
-
-.progress-bar {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.5s ease;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .disk-partitions {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 2px;
 }
 
 .partition-tag {
-  font-size: 8px;
-  padding: 1px 6px;
-  border-radius: 3px;
+  font-size: 7px;
+  padding: 0 4px;
+  border-radius: 2px;
   background: #21262d;
   color: #8b949e;
   border: 1px solid #30363d;
@@ -170,7 +217,7 @@ export default {
 }
 
 .partition-empty {
-  font-size: 8px;
+  font-size: 7px;
   color: #30363d;
 }
 

@@ -311,12 +311,10 @@ bool Parser::validateName(const std::string& value) {
 bool Parser::validatePath(const std::string& value) {
     if (value.empty()) return false;
     
-    if (value[0] != '/' && !(value.length() >= 2 && value[0] == '.' && value[1] == '/')) {
-        return false;
-    }
-    
+    // ✅ CORREGIDO: Aceptar rutas relativas (discos/disco.mia) y absolutas (/home/...)
+    // No permitir caracteres peligrosos
     for (char c : value) {
-        if (c == '<' || c == '>' || c == '|' || c == '&' || c == ';') {
+        if (c == '<' || c == '>' || c == '|' || c == '&' || c == ';' || c == '`') {
             return false;
         }
     }

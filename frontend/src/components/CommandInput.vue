@@ -49,7 +49,9 @@ export default {
     return {
       command: '',
       loading: false,
-      backendOnline: false
+      backendOnline: false,
+      batchResults: [],
+      batchIndex: 0
     }
   },
   mounted() {
@@ -82,16 +84,51 @@ export default {
       }
 
       this.loading = true
+      this.batchResults = []
+      this.batchIndex = 0
 
-      const result = await analyzeCommand(this.command)
+      // Dividir en líneas y filtrar vacías
+      const lines = this.command.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && !line.startsWith('#'))
 
-      if (result.success) {
-        this.$emit('command-submitted', result.data)
-      } else {
+      // Si es una sola línea, ejecutar normalmente
+      if (lines.length === 1) {
+        const result = await analyzeCommand(lines[0])
+        if (result.success) {
+          this.$emit('command-submitted', result.data)
+        } else {
+          this.$emit('command-submitted', {
+            success: false,
+            message: 'Error en la ejecucion',
+            errors: [{ message: result.error || 'Error desconocido' }]
+          })
+        }
+        this.loading = false
+        return
+      }
+
+      // Si son múltiples líneas, ejecutar una por una
+      const results = []
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        this.batchIndex = i + 1
+        
+        const result = await analyzeCommand(line)
+        results.push({
+          index: i + 1,
+          command: line,
+          result: result.data || { success: false, message: result.error }
+        })
+
+        // Emitir cada resultado individualmente
         this.$emit('command-submitted', {
-          success: false,
-          message: 'Error en la ejecucion',
-          errors: [{ message: result.error || 'Error desconocido' }]
+          ...(result.data || { success: false, message: result.error }),
+          _batch: {
+            index: i + 1,
+            command: line,
+            total: lines.length
+          }
         })
       }
 
@@ -100,6 +137,8 @@ export default {
 
     clearCommand() {
       this.command = ''
+      this.batchResults = []
+      this.batchIndex = 0
       this.$emit('command-submitted', null)
     },
 

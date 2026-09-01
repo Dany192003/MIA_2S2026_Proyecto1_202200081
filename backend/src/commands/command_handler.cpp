@@ -17,6 +17,7 @@ CommandHandler::CommandHandler() {
     currentSession.diskPath = "";
     currentSession.uid = -1;
     currentSession.gid = -1;
+    currentSession.group = "";
 }
 
 CommandResult CommandHandler::processCommand(const std::string& command) {
@@ -81,10 +82,26 @@ CommandResult CommandHandler::processCommand(const std::string& command) {
         processedResult.message = "Comando no implementado: " + cmd;
     }
     
+    // 🔥 CORREGIDO: Fusionar datos en lugar de sobrescribir
     // Combinar resultados
     processedResult.command = command;
     processedResult.tokens = result.tokens;
-    processedResult.data = result.data;
+    
+    // 1. Si processedResult ya tiene data (ej: mounted, cat), conservarla
+    // 2. Agregar command y parameters del parser para depuración
+    json mergedData = processedResult.data;
+    
+    // Si no hay data del handler, inicializar vacío
+    if (mergedData.empty()) {
+        mergedData = json::object();
+    }
+    
+    // Agregar command y parameters del parser (NO sobrescribir)
+    mergedData["_command"] = cmd;
+    mergedData["_parameters"] = params;
+    
+    // Asignar el data fusionado
+    processedResult.data = mergedData;
     
     return processedResult;
 }
