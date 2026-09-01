@@ -62,7 +62,7 @@ CommandResult CommandHandler::processMkusr(const json& params) {
         // Leer users.txt
         std::vector<std::string> userLines = Ext2Utils::readUsersFile(diskPath, mountId, mbr, partitionIndex);
         
-        // Verificar que el usuario no exista
+        // ✅ CORREGIDO: Verificar que el usuario no exista (excluyendo eliminados)
         for (const auto& line : userLines) {
             if (line.find(", U, ") != std::string::npos) {
                 std::stringstream ss(line);
@@ -71,11 +71,15 @@ CommandResult CommandHandler::processMkusr(const json& params) {
                 while (std::getline(ss, token, ',')) {
                     parts.push_back(token);
                 }
-                if (parts.size() >= 4) {
+                if (parts.size() >= 5) {
+                    for (auto& p : parts) {
+                        p.erase(0, p.find_first_not_of(" "));
+                        p.erase(p.find_last_not_of(" ") + 1);
+                    }
                     std::string username = parts[3];
-                    username.erase(0, username.find_first_not_of(" "));
-                    username.erase(username.find_last_not_of(" ") + 1);
-                    if (username == user) {
+                    int uid = std::stoi(parts[0]);
+                    // ✅ EXCLUIR eliminados (uid != 0)
+                    if (username == user && uid != 0) {
                         result.message = "Error: El usuario ya existe: " + user;
                         return result;
                     }
@@ -86,7 +90,10 @@ CommandResult CommandHandler::processMkusr(const json& params) {
         // Verificar que el grupo exista
         bool groupFound = false;
         int nextUid = 2;
+        
+        // ✅ CORREGIDO: Calcular nextUid desde líneas de USUARIO (no de grupo)
         for (const auto& line : userLines) {
+            // Buscar grupo
             if (line.find(", G, ") != std::string::npos) {
                 std::stringstream ss(line);
                 std::string token;
@@ -95,15 +102,34 @@ CommandResult CommandHandler::processMkusr(const json& params) {
                     parts.push_back(token);
                 }
                 if (parts.size() >= 3) {
+                    for (auto& p : parts) {
+                        p.erase(0, p.find_first_not_of(" "));
+                        p.erase(p.find_last_not_of(" ") + 1);
+                    }
                     std::string groupName = parts[2];
-                    groupName.erase(0, groupName.find_first_not_of(" "));
-                    groupName.erase(groupName.find_last_not_of(" ") + 1);
                     int gid = std::stoi(parts[0]);
                     if (groupName == grp && gid != 0) {
                         groupFound = true;
                     }
-                    if (gid >= nextUid) {
-                        nextUid = gid + 1;
+                }
+            }
+            
+            // ✅ CORREGIDO: Calcular nextUid desde líneas de USUARIO
+            if (line.find(", U, ") != std::string::npos) {
+                std::stringstream ss(line);
+                std::string token;
+                std::vector<std::string> parts;
+                while (std::getline(ss, token, ',')) {
+                    parts.push_back(token);
+                }
+                if (parts.size() >= 5) {
+                    for (auto& p : parts) {
+                        p.erase(0, p.find_first_not_of(" "));
+                        p.erase(p.find_last_not_of(" ") + 1);
+                    }
+                    int uid = std::stoi(parts[0]);
+                    if (uid >= nextUid) {
+                        nextUid = uid + 1;
                     }
                 }
             }
@@ -124,7 +150,7 @@ CommandResult CommandHandler::processMkusr(const json& params) {
         
         result.success = true;
         result.message = "Usuario creado exitosamente: " + user + " (Grupo: " + grp + ")";
-        result.data["user"] = {{"user", user}, {"group", grp}};
+        result.data["user"] = {{"user", user}, {"group", grp}, {"uid", nextUid}};
         
     } catch (const std::exception& e) {
         result.message = "Error al procesar MKUSR: " + std::string(e.what());

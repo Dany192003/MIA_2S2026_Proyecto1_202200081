@@ -37,7 +37,7 @@ private:
         std::string diskPath;
         int uid;
         int gid;
-        std::string group;  // ✅ Agregado: nombre del grupo del usuario
+        std::string group;
     };
     Session currentSession;
     

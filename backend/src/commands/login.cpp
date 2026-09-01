@@ -13,16 +13,11 @@ CommandResult CommandHandler::processLogin(const json& params) {
         std::string pass = params["pass"];
         std::string id = params["id"];
         
-        // ✅ Si hay sesión activa, cerrarla automáticamente
+        // ✅ CORREGIDO: NO cerrar sesión automáticamente
+        // Según el PDF: "No se puede iniciar otra sesión sin haber hecho un LOGOUT antes"
         if (currentSession.active) {
-            // Cerrar sesión automáticamente
-            currentSession.active = false;
-            currentSession.user = "";
-            currentSession.mountId = "";
-            currentSession.diskPath = "";
-            currentSession.uid = -1;
-            currentSession.gid = -1;
-            currentSession.group = "";
+            result.message = "Error: Ya hay una sesión activa. Use LOGOUT primero.";
+            return result;
         }
         
         if (mountedDisks.find(id) == mountedDisks.end()) {
