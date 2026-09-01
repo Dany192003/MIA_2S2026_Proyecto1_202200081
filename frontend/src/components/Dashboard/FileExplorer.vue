@@ -2,52 +2,109 @@
   <div class="file-explorer">
     <div class="explorer-header">
       <span class="explorer-title">Archivos</span>
-      <span class="mount-info">{{ currentMount || 'sin montar' }}</span>
+      <span class="mount-info" v-if="mountId">ID: {{ mountId }}</span>
+      <span class="mount-info" v-else>sin montar</span>
     </div>
 
     <div class="explorer-path">
       <button class="btn-up" @click="goUp" :disabled="currentPath === '/'">↑</button>
       <span class="path-text">{{ currentPath }}</span>
+      <button class="btn-refresh" @click="refresh" title="Actualizar">↻</button>
     </div>
 
     <div class="explorer-content">
-      <div v-if="files.length === 0" class="empty-state">
+      <div v-if="loading" class="loading-state">
+        <span>Cargando...</span>
+      </div>
+      <div v-else-if="files.length === 0" class="empty-state">
         <p>Vacio</p>
       </div>
-      <div v-for="file in files" :key="file.name" class="file-item" :class="{ 'is-folder': file.isFolder }" @dblclick="openFolder(file)">
+      <div v-for="file in files" :key="file.name" class="file-item" 
+           :class="{ 'is-folder': file.isFolder }" 
+           @dblclick="openFolder(file)">
         <span class="file-icon">{{ file.isFolder ? '📁' : '📄' }}</span>
         <span class="file-name">{{ file.name }}</span>
-        <span class="file-size">{{ file.isFolder ? '-' : file.size }}</span>
+        <span class="file-size">{{ file.isFolder ? '-' : formatSize(file.size) }}</span>
+        <span class="file-perms">{{ file.perms }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { analyzeCommand } from '../../services/api.js'
+
 export default {
   name: 'FileExplorer',
   data() {
     return {
       currentPath: '/',
-      currentMount: '',
-      files: []
+      mountId: '',
+      files: [],
+      loading: false
     }
   },
+  mounted() {
+    // Intentar obtener el ID de montaje
+    this.getMountId()
+  },
   methods: {
-    refresh() {
-      console.log('Actualizando explorador de archivos...')
+    async getMountId() {
+      try {
+        const result = await analyzeCommand('mounted')
+        if (result.success && result.data?.data?.mounted) {
+          const mounted = result.data.data.mounted
+          if (mounted.length > 0) {
+            this.mountId = mounted[0].id || ''
+            this.refresh()
+          }
+        }
+      } catch (error) {
+        console.error('Error obteniendo ID de montaje:', error)
+      }
+    },
+    async refresh() {
+      if (!this.mountId) {
+        await this.getMountId()
+        if (!this.mountId) return
+      }
+
+      this.loading = true
+      try {
+        const result = await analyzeCommand(`lsjson -path=${this.currentPath} -id=${this.mountId}`)
+        console.log('📂 lsjson result:', result)
+        
+        if (result.success && result.data?.data?.files) {
+          this.files = result.data.data.files
+        } else {
+          this.files = []
+        }
+      } catch (error) {
+        console.error('Error listando archivos:', error)
+        this.files = []
+      }
+      this.loading = false
     },
     goUp() {
       if (this.currentPath !== '/') {
         const parts = this.currentPath.split('/').filter(p => p)
         parts.pop()
         this.currentPath = '/' + parts.join('/') || '/'
+        this.refresh()
       }
     },
     openFolder(file) {
       if (file.isFolder) {
         this.currentPath = this.currentPath === '/' ? '/' + file.name : this.currentPath + '/' + file.name
+        this.refresh()
       }
+    },
+    formatSize(bytes) {
+      if (!bytes || bytes === 0) return '0 B'
+      const k = 1024
+      const sizes = ['B', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     }
   }
 }
@@ -98,7 +155,7 @@ export default {
   flex-shrink: 0;
 }
 
-.btn-up {
+.btn-up, .btn-refresh {
   background: #0d1117;
   border: 1px solid #30363d;
   color: #8b949e;
@@ -109,7 +166,7 @@ export default {
   transition: all 0.3s ease;
 }
 
-.btn-up:hover:not(:disabled) {
+.btn-up:hover:not(:disabled), .btn-refresh:hover {
   border-color: #58a6ff;
   color: #e6edf3;
 }
@@ -141,7 +198,7 @@ export default {
   gap: 2px;
 }
 
-.empty-state {
+.loading-state, .empty-state {
   flex: 1;
   display: flex;
   align-items: center;
@@ -186,6 +243,16 @@ export default {
 .file-size {
   font-size: 9px;
   color: #8b949e;
+  min-width: 50px;
+  text-align: right;
+}
+
+.file-perms {
+  font-size: 8px;
+  color: #30363d;
+  font-family: monospace;
+  min-width: 30px;
+  text-align: center;
 }
 
 ::-webkit-scrollbar {

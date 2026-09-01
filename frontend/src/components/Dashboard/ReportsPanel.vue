@@ -3,16 +3,21 @@
     <div class="reports-header">
       <span class="reports-title">Reportes</span>
       <span class="reports-badge">{{ reportCount }}</span>
+      <button class="btn-refresh" @click="getMountId" title="Actualizar">↻</button>
     </div>
 
     <div class="reports-tabs">
-      <button v-for="tab in reportTabs" :key="tab.key" class="tab-btn" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
+      <button v-for="tab in reportTabs" :key="tab.key" 
+              class="tab-btn" :class="{ active: activeTab === tab.key }" 
+              @click="activeTab = tab.key">
         {{ tab.label }}
       </button>
     </div>
 
     <div class="reports-grid">
-      <button v-for="report in currentReports" :key="report.name" class="report-btn" :class="{ 'is-generated': report.generated }" @click="generateReport(report)">
+      <button v-for="report in currentReports" :key="report.name" 
+              class="report-btn" :class="{ 'is-generated': report.generated }" 
+              @click="generateReport(report)">
         <span class="report-name">{{ report.name }}</span>
         <span class="report-status">{{ report.generated ? '✓' : '·' }}</span>
       </button>
@@ -24,21 +29,27 @@
         <button class="preview-close" @click="closePreview">×</button>
       </div>
       <div class="preview-content">
-        <img :src="previewImage" alt="Reporte" @error="handleImageError" />
+        <img v-if="isImage" :src="previewImage" alt="Reporte" @error="handleImageError" />
+        <pre v-else class="text-preview">{{ previewText }}</pre>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { analyzeCommand } from '../../services/api.js'
+
 export default {
   name: 'ReportsPanel',
   data() {
     return {
       activeTab: 'sistema',
       reportCount: 0,
+      mountId: '',
       previewImage: null,
+      previewText: '',
       previewName: '',
+      isImage: true,
       reportTabs: [
         { key: 'sistema', label: 'Sistema' },
         { key: 'archivos', label: 'Archivos' },
@@ -46,20 +57,20 @@ export default {
       ],
       reports: {
         sistema: [
-          { name: 'MBR', generated: false },
-          { name: 'DISK', generated: false },
-          { name: 'SB', generated: false }
+          { name: 'MBR', generated: false, type: 'image' },
+          { name: 'DISK', generated: false, type: 'image' },
+          { name: 'SB', generated: false, type: 'image' }
         ],
         archivos: [
-          { name: 'INODE', generated: false },
-          { name: 'BLOCK', generated: false },
-          { name: 'TREE', generated: false },
-          { name: 'LS', generated: false }
+          { name: 'INODE', generated: false, type: 'image' },
+          { name: 'BLOCK', generated: false, type: 'image' },
+          { name: 'TREE', generated: false, type: 'image' },
+          { name: 'LS', generated: false, type: 'image' }
         ],
         bitmaps: [
-          { name: 'bm_inode', generated: false },
-          { name: 'bm_block', generated: false },
-          { name: 'FILE', generated: false }
+          { name: 'bm_inode', generated: false, type: 'text' },
+          { name: 'bm_block', generated: false, type: 'text' },
+          { name: 'FILE', generated: false, type: 'text' }
         ]
       }
     }
@@ -69,19 +80,86 @@ export default {
       return this.reports[this.activeTab] || []
     }
   },
+  mounted() {
+    this.getMountId()
+  },
   methods: {
-    generateReport(report) {
-      report.generated = true
-      this.reportCount = this.reportCount + 1
-      this.previewName = report.name
-      this.previewImage = `https://via.placeholder.com/400x200/161b22/58a6ff?text=${report.name}`
+    async getMountId() {
+      try {
+        const result = await analyzeCommand('mounted')
+        if (result.success && result.data?.data?.mounted) {
+          const mounted = result.data.data.mounted
+          if (mounted.length > 0) {
+            this.mountId = mounted[0].id || ''
+          }
+        }
+      } catch (error) {
+        console.error('Error obteniendo ID de montaje:', error)
+      }
+    },
+    async generateReport(report) {
+      if (!this.mountId) {
+        await this.getMountId()
+        if (!this.mountId) {
+          alert('No hay partición montada. Monta una partición primero.')
+          return
+        }
+      }
+
+      const reportName = report.name.toLowerCase()
+      const isText = report.type === 'text'
+      const ext = isText ? 'txt' : 'png'
+      
+      // Generar nombre de archivo con timestamp
+      const timestamp = Date.now()
+      const reportPath = `/home/Edwin/Desktop/MIA_2S2026_Proyecto1_202200081/reports/${reportName}_${timestamp}.${ext}`
+      
+      let command = `rep -name=${reportName} -path=${reportPath} -id=${this.mountId}`
+      
+      // Para reportes file y ls, necesitan path_file_ls
+      if (reportName === 'file') {
+        command += ` -path_file_ls=/users.txt`
+      } else if (reportName === 'ls') {
+        command += ` -path_file_ls=/`
+      }
+
+      try {
+        console.log('📊 Generando reporte:', command)
+        const result = await analyzeCommand(command)
+        console.log('📊 Resultado:', result)
+
+        if (result.success) {
+          report.generated = true
+          this.reportCount++
+
+          if (isText) {
+            // Reportes de texto: mostrar contenido
+            this.isImage = false
+            this.previewText = result.data?.data?.content || 'Reporte generado'
+            this.previewImage = null
+          } else {
+            // Reportes de imagen: mostrar la imagen
+            this.isImage = true
+            // Construir URL para la imagen (servida desde el backend)
+            this.previewImage = `/api/reports/${reportName}_${timestamp}.${ext}`
+            this.previewText = ''
+          }
+          this.previewName = report.name
+        } else {
+          alert(`Error generando reporte: ${result.message}`)
+        }
+      } catch (error) {
+        console.error('Error generando reporte:', error)
+        alert('Error al generar el reporte')
+      }
     },
     closePreview() {
       this.previewImage = null
+      this.previewText = ''
       this.previewName = ''
     },
     handleImageError() {
-      // Error silencioso
+      console.warn('Error cargando imagen del reporte')
     }
   }
 }
@@ -122,6 +200,22 @@ export default {
   padding: 0 8px;
   border-radius: 8px;
   border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.btn-refresh {
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  border-radius: 4px;
+  padding: 0 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.btn-refresh:hover {
+  border-color: #58a6ff;
+  color: #e6edf3;
 }
 
 .reports-tabs {
@@ -203,6 +297,8 @@ export default {
   border-top: 1px solid #30363d;
   padding-top: 4px;
   flex-shrink: 0;
+  max-height: 150px;
+  overflow: hidden;
 }
 
 .preview-header {
@@ -233,18 +329,31 @@ export default {
   background: #0d1117;
   border-radius: 4px;
   border: 1px solid #30363d;
-  overflow: hidden;
-  min-height: 60px;
+  overflow: auto;
+  min-height: 50px;
+  max-height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 4px;
 }
 
 .preview-content img {
   max-width: 100%;
-  max-height: 120px;
+  max-height: 110px;
   object-fit: contain;
+}
+
+.text-preview {
+  font-size: 9px;
+  color: #a6e3a1;
+  font-family: monospace;
+  margin: 0;
   padding: 4px;
+  max-height: 110px;
+  overflow: auto;
+  white-space: pre-wrap;
+  width: 100%;
 }
 
 ::-webkit-scrollbar {

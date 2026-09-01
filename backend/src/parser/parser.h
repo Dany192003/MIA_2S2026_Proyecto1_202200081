@@ -20,7 +20,7 @@ std::vector<std::string> validCommands = {
     "mkdisk", "rmdisk", "fdisk", "mount", "mounted",
     "mkfs", "login", "logout",
     "mkgrp", "rmgrp", "mkusr", "rmusr", "chgrp",
-    "mkfile", "mkdir", "cat", "rep", "lsdisk"
+    "mkfile", "mkdir", "cat", "rep", "lsdisk", "lsjson"
 };
     
    std::map<std::string, std::vector<std::string>> commandParams = {
@@ -41,7 +41,8 @@ std::vector<std::string> validCommands = {
     {"mkdir", {"path", "p"}},
     {"cat", {}},  // Parámetros dinámicos: file1, file2, ...
     {"rep", {"name", "path", "id", "path_file_ls"}},  // ← Cambiar de path_file_1s a path_file_ls
-    {"lsdisk", {}}
+    {"lsdisk", {}},
+    {"lsjson", {"path", "id"}}            
 };
 
 std::map<std::string, std::vector<std::string>> requiredParams = {
@@ -61,7 +62,8 @@ std::map<std::string, std::vector<std::string>> requiredParams = {
     {"mkfile", {"path"}},
     {"mkdir", {"path"}},
     {"cat", {}},  // file1, file2, ... se manejan dinámicamente
-    {"rep", {"name", "path", "id"}}
+    {"rep", {"name", "path", "id"}},
+    {"lsjson", {"path", "id"}}
 };
     
     bool match(const std::string& type);

@@ -13,9 +13,16 @@ CommandResult CommandHandler::processLogin(const json& params) {
         std::string pass = params["pass"];
         std::string id = params["id"];
         
+        // ✅ Si hay sesión activa, cerrarla automáticamente
         if (currentSession.active) {
-            result.message = "Error: Ya hay una sesión activa. Use LOGOUT primero.";
-            return result;
+            // Cerrar sesión automáticamente
+            currentSession.active = false;
+            currentSession.user = "";
+            currentSession.mountId = "";
+            currentSession.diskPath = "";
+            currentSession.uid = -1;
+            currentSession.gid = -1;
+            currentSession.group = "";
         }
         
         if (mountedDisks.find(id) == mountedDisks.end()) {
@@ -148,7 +155,7 @@ CommandResult CommandHandler::processLogin(const json& params) {
         currentSession.diskPath = diskPath;
         currentSession.uid = uid;
         currentSession.gid = gid;
-        currentSession.group = group;  // ✅ Guardar nombre del grupo
+        currentSession.group = group;
         
         result.success = true;
         result.message = "Sesión iniciada como: " + user;

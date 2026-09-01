@@ -68,6 +68,7 @@ private:
     CommandResult processCat(const json& params);
     CommandResult processRep(const json& params);
     CommandResult processLsdisk(const json& params);
+    CommandResult processLsjson(const json& params);
 };
 
 #endif

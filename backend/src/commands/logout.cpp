@@ -11,17 +11,19 @@ CommandResult CommandHandler::processLogout(const json& params) {
             return result;
         }
         
-        // 2. Cerrar sesión
+        // 2. Guardar nombre de usuario para el mensaje
         std::string user = currentSession.user;
+        
+        // 3. ✅ LIMPIAR COMPLETAMENTE LA SESIÓN
         currentSession.active = false;
         currentSession.user = "";
         currentSession.mountId = "";
         currentSession.diskPath = "";
         currentSession.uid = -1;
         currentSession.gid = -1;
-        currentSession.group = "";  // ✅ Limpiar grupo
+        currentSession.group = "";
         
-        // 3. Éxito
+        // 4. Éxito
         result.success = true;
         result.message = "Sesión cerrada exitosamente. Usuario: " + user;
         

@@ -142,7 +142,7 @@ void Lexer::identifyCommand() {
         // Administración de carpetas y archivos
         "mkfile", "mkdir", "cat",
         // Reportes
-        "rep", "lsdisk"
+        "rep", "lsdisk" , "lsjson"
 
     };
     
