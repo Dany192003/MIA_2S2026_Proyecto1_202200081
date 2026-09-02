@@ -13,8 +13,7 @@ CommandResult CommandHandler::processLogin(const json& params) {
         std::string pass = params["pass"];
         std::string id = params["id"];
         
-        // ✅ CORREGIDO: NO cerrar sesión automáticamente
-        // Según el PDF: "No se puede iniciar otra sesión sin haber hecho un LOGOUT antes"
+        // ✅ Verificar sesión activa
         if (currentSession.active) {
             result.message = "Error: Ya hay una sesión activa. Use LOGOUT primero.";
             return result;
@@ -58,7 +57,6 @@ CommandResult CommandHandler::processLogin(const json& params) {
         }
         disk.close();
         
-        // Leer users.txt directamente del disco
         Superblock sb = Ext2Utils::readSuperblock(diskPath, mbr, partitionIndex);
         std::string usersContent = Ext2Utils::readFile(diskPath, "/users.txt", sb, mbr, partitionIndex);
         
@@ -73,13 +71,11 @@ CommandResult CommandHandler::processLogin(const json& params) {
             }
         }
         
-        // Fallback si no hay contenido
         if (userLines.empty()) {
             userLines.push_back("1, G, root");
             userLines.push_back("1, U, root, root, 123");
         }
         
-        // Buscar usuario
         bool userFound = false;
         int uid = -1;
         int gid = -1;
@@ -107,7 +103,6 @@ CommandResult CommandHandler::processLogin(const json& params) {
                         group = parts[2];
                         password = parts[4];
                         
-                        // Buscar el GID del grupo
                         for (const auto& gline : userLines) {
                             if (gline.find(", G, ") != std::string::npos) {
                                 std::stringstream gss(gline);

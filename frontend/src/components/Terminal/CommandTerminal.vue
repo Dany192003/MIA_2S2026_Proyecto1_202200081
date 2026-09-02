@@ -12,7 +12,10 @@
 
     <div class="terminal-grid">
       <div class="terminal-left">
-        <CommandInput @command-submitted="handleCommand" />
+        <CommandInput 
+          @command-submitted="handleCommand" 
+          @batch-completed="handleBatchCompleted"
+        />
       </div>
       <div class="terminal-right">
         <CommandOutput :result="currentResult" />
@@ -45,6 +48,9 @@ export default {
       this.currentResult = result
       this.$emit('command-executed', result)
     },
+    handleBatchCompleted(results) {
+      this.$emit('batch-completed', results)
+    },
     clearTerminal() {
       this.currentResult = null
     }
@@ -60,7 +66,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 300px;
+  min-height: 350px;
   overflow: hidden;
 }
 
@@ -125,7 +131,7 @@ export default {
 }
 
 .terminal-left {
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-right: 1px solid #30363d;
   overflow: hidden;
   display: flex;
@@ -147,12 +153,12 @@ export default {
 
 .terminal-left .command-input .command-textarea {
   height: 100%;
-  min-height: 60px;
+  min-height: 80px;
   resize: none;
 }
 
 .terminal-right {
-  padding: 8px 12px;
+  padding: 10px 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -186,7 +192,7 @@ export default {
 
 @media (max-width: 768px) {
   .command-terminal {
-    min-height: 250px;
+    min-height: 280px;
   }
   .terminal-grid {
     grid-template-columns: 1fr;
@@ -195,25 +201,25 @@ export default {
     border-right: none;
     border-bottom: 1px solid #30363d;
     max-height: 45%;
-    padding: 6px 10px;
+    padding: 8px 12px;
   }
   .terminal-right {
     max-height: 55%;
-    padding: 6px 10px;
+    padding: 8px 12px;
   }
 }
 
 @media (max-width: 480px) {
   .command-terminal {
-    min-height: 200px;
+    min-height: 220px;
   }
   .terminal-left {
     max-height: 40%;
-    padding: 4px 8px;
+    padding: 6px 10px;
   }
   .terminal-right {
     max-height: 60%;
-    padding: 4px 8px;
+    padding: 6px 10px;
   }
   .terminal-header {
     padding: 4px 10px;

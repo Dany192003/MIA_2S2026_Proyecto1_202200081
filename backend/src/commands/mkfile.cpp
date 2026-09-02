@@ -62,6 +62,14 @@ CommandResult CommandHandler::processMkfile(const json& params) {
             return result;
         }
         
+        // ✅ VALIDAR NOMBRE DEL ARCHIVO (máximo 11 caracteres)
+        size_t lastSlashPos = path.find_last_of('/');
+        std::string fileName = (lastSlashPos != std::string::npos) ? path.substr(lastSlashPos + 1) : path;
+        if (fileName.length() > 11) {
+            result.message = "Error: El nombre no puede exceder 11 caracteres: " + fileName;
+            return result;
+        }
+        
         std::string diskPath = currentSession.diskPath;
         std::string mountId = currentSession.mountId;
         int uid = currentSession.uid;
@@ -104,21 +112,19 @@ CommandResult CommandHandler::processMkfile(const json& params) {
         // Verificar si el archivo ya existe
         int existingInode = Ext2Utils::findInodeByPath(diskPath, path, sb, mbr, partitionIndex);
         if (existingInode != -1) {
-            // ✅ CORREGIDO: No sugerir -f (no existe en el PDF)
             result.message = "Error: El archivo ya existe: " + path;
             result.data["fileExists"] = true;
             return result;
         }
         
         // Verificar la carpeta padre
-        size_t lastSlash = path.find_last_of('/');
-        if (lastSlash != std::string::npos) {
-            std::string parentDir = path.substr(0, lastSlash);
+        if (lastSlashPos != std::string::npos) {
+            std::string parentDir = path.substr(0, lastSlashPos);
             int parentInode = Ext2Utils::findInodeByPath(diskPath, parentDir, sb, mbr, partitionIndex);
             
             if (parentInode == -1) {
                 if (recursive) {
-                    // ✅ CORREGIDO: Verificar permisos en CADA nivel recursivo
+                    // Crear carpetas padre recursivamente con permisos
                     std::vector<std::string> parts = Ext2Utils::splitPath(parentDir);
                     std::string currentPath = "/";
                     
@@ -156,7 +162,7 @@ CommandResult CommandHandler::processMkfile(const json& params) {
                     return result;
                 }
             } else {
-                // ✅ Verificar permisos en carpeta padre existente
+                // Verificar permisos en carpeta padre existente
                 std::fstream diskRead(diskPath, std::ios::in | std::ios::binary);
                 if (diskRead.is_open()) {
                     Inode parentInodeStruct = Ext2Utils::readInode(diskRead, sb, parentInode);

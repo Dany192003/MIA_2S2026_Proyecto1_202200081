@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <mutex>
 #include "../utils/json_utils.h"
 #include "../lexer/lexer.h"
 #include "../parser/parser.h"
@@ -40,6 +41,9 @@ private:
         std::string group;
     };
     Session currentSession;
+    
+    // ✅ UN SOLO MUTEX PARA TODO EL ESTADO
+    std::mutex stateMutex;
     
     // ===== MÉTODOS DE VALIDACIÓN =====
     bool validateCommandStructure(const CommandResult& result);

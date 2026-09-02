@@ -1,19 +1,16 @@
 <template>
   <div id="app">
     <AppHeader />
-
     <main class="main-content">
-      <!-- TERMINAL -->
       <div class="terminal-section">
-        <CommandTerminal @command-executed="handleCommandExecuted" />
+        <CommandTerminal 
+          @command-executed="handleCommandExecuted"
+          @batch-completed="handleBatchCompleted"
+        />
       </div>
-
-      <!-- DASHBOARD - SIEMPRE ABAJO -->
       <div class="dashboard-section">
         <SystemSummary ref="systemSummary" />
       </div>
-
-      <!-- PANELES INFERIORES -->
       <div class="panels-section">
         <div class="panel-item">
           <DiskList ref="diskList" />
@@ -26,7 +23,6 @@
         </div>
       </div>
     </main>
-
     <AppFooter />
   </div>
 </template>
@@ -53,6 +49,16 @@ export default {
   },
   methods: {
     handleCommandExecuted(result) {
+      // Solo refrescar si es un comando individual (no batch)
+      if (!result || !result._batch) {
+        this.refreshAll()
+      }
+    },
+    handleBatchCompleted(results) {
+      // Refrescar al final del batch
+      this.refreshAll()
+    },
+    refreshAll() {
       this.$refs.systemSummary?.refresh()
       this.$refs.diskList?.refresh()
       this.$refs.fileExplorer?.refresh()
@@ -77,39 +83,26 @@ html, body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #0d1117;
-  color: #e6edf3;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   overflow: hidden;
 }
 
-/* ============================================================
-   HEADER: FIJO ARRIBA
-   ============================================================ */
-.app-header {
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   MAIN: OCUPA TODO EL ESPACIO RESTANTE CON SCROLL
-   ============================================================ */
 .main-content {
   flex: 1;
-  padding: 10px 16px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
+  gap: 8px;
   min-height: 0;
+  overflow: hidden;
 }
 
-/* ============================================================
-   TERMINAL: TAMAÑO FLEXIBLE CON MINIMO
-   ============================================================ */
 .terminal-section {
-  flex: 0 0 auto;
-  min-height: 350px;
-  max-height: 65vh;
+  flex: 1;
+  min-height: 400px;
+  max-height: 70vh;
   overflow: hidden;
 }
 
@@ -117,23 +110,13 @@ html, body {
   height: 100%;
 }
 
-/* ============================================================
-   DASHBOARD: SIEMPRE VISIBLE
-   ============================================================ */
-.dashboard-section {
-  flex: 0 0 auto;
-}
-
-/* ============================================================
-   PANELES INFERIORES: 3 COLUMNAS
-   ============================================================ */
 .panels-section {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
   flex: 0 0 auto;
-  min-height: 140px;
-  max-height: 220px;
+  min-height: 100px;
+  max-height: 160px;
 }
 
 .panel-item {
@@ -150,55 +133,33 @@ html, body {
   min-height: 0;
 }
 
-/* ============================================================
-   FOOTER: FIJO ABAJO
-   ============================================================ */
-.app-footer {
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
 @media (max-width: 1024px) {
   .panels-section {
     grid-template-columns: 1fr 1fr;
-    max-height: 260px;
-  }
-  .terminal-section {
-    min-height: 300px;
-    max-height: 55vh;
+    max-height: 220px;
   }
 }
 
 @media (max-width: 768px) {
-  .main-content {
-    padding: 8px 12px;
-    gap: 8px;
+  .terminal-section {
+    min-height: 300px;
+    max-height: 55vh;
   }
+  .panels-section {
+    grid-template-columns: 1fr 1fr;
+    max-height: 240px;
+    min-height: 140px;
+  }
+}
+
+@media (max-width: 480px) {
   .terminal-section {
     min-height: 250px;
     max-height: 50vh;
   }
   .panels-section {
-    grid-template-columns: 1fr 1fr;
-    max-height: 280px;
-    min-height: 160px;
-  }
-}
-
-@media (max-width: 480px) {
-  .main-content {
-    padding: 6px 8px;
-    gap: 6px;
-  }
-  .terminal-section {
-    min-height: 200px;
-    max-height: 45vh;
-  }
-  .panels-section {
     grid-template-columns: 1fr;
-    max-height: 350px;
+    max-height: 320px;
     min-height: 180px;
   }
 }

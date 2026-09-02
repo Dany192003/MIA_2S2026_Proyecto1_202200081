@@ -65,6 +65,9 @@ export default {
     },
 
     async submitCommand() {
+      // ✅ GUARD DE REENTRADA: Evita ejecuciones concurrentes
+      if (this.loading) return
+
       if (!this.command.trim()) {
         this.$emit('command-submitted', {
           success: false,
@@ -108,14 +111,13 @@ export default {
         return
       }
 
-      // Si son múltiples líneas, ejecutar una por una
-      const results = []
+      // ✅ Ejecutar SECUENCIALMENTE (uno por uno)
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]
         this.batchIndex = i + 1
         
         const result = await analyzeCommand(line)
-        results.push({
+        this.batchResults.push({
           index: i + 1,
           command: line,
           result: result.data || { success: false, message: result.error }
@@ -131,6 +133,9 @@ export default {
           }
         })
       }
+
+      // ✅ NUEVO: Emitir evento de fin de batch
+      this.$emit('batch-completed', this.batchResults)
 
       this.loading = false
     },

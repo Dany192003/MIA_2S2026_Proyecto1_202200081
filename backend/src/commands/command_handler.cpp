@@ -10,7 +10,6 @@
 #include <cstring>
 
 CommandHandler::CommandHandler() {
-    // Inicializar sesión
     currentSession.active = false;
     currentSession.user = "";
     currentSession.mountId = "";
@@ -21,26 +20,24 @@ CommandHandler::CommandHandler() {
 }
 
 CommandResult CommandHandler::processCommand(const std::string& command) {
-    // Primero, parsear el comando
+    // ✅ UN SOLO MUTEX PARA TODO
+    std::lock_guard<std::mutex> lock(stateMutex);
+    
     CommandResult result = parser.parse(command);
     
-    // Si hay errores de sintaxis o léxicos, retornar
     if (!result.success) {
         return result;
     }
     
-    // Validar estructura del comando
     if (!validateCommandStructure(result)) {
         result.success = false;
         result.message = "Estructura del comando inválida";
         return result;
     }
     
-    // Obtener el comando y parámetros
     std::string cmd = result.data["command"];
     json params = result.data["parameters"];
     
-    // Procesar según el comando
     CommandResult processedResult;
     
     if (cmd == "mkdisk") {
@@ -88,25 +85,15 @@ CommandResult CommandHandler::processCommand(const std::string& command) {
         processedResult.message = "Comando no implementado: " + cmd;
     }
     
-    // 🔥 CORREGIDO: Fusionar datos en lugar de sobrescribir
-    // Combinar resultados
     processedResult.command = command;
     processedResult.tokens = result.tokens;
     
-    // 1. Si processedResult ya tiene data (ej: mounted, cat), conservarla
-    // 2. Agregar command y parameters del parser para depuración
     json mergedData = processedResult.data;
-    
-    // Si no hay data del handler, inicializar vacío
     if (mergedData.empty()) {
         mergedData = json::object();
     }
-    
-    // Agregar command y parameters del parser (NO sobrescribir)
     mergedData["_command"] = cmd;
     mergedData["_parameters"] = params;
-    
-    // Asignar el data fusionado
     processedResult.data = mergedData;
     
     return processedResult;
@@ -128,7 +115,6 @@ bool CommandHandler::validateDiskExists(const std::string& path) {
 }
 
 bool CommandHandler::validatePartitionName(const std::string& path, const std::string& name) {
-    // TODO: Implementar validación de nombre de partición
     return true;
 }
 

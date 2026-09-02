@@ -338,7 +338,7 @@ std::string Ext2Utils::readFile(const std::string& diskPath, const std::string& 
 }
 
 // ============================================================
-// writeFile - CORREGIDO
+// writeFile - CORREGIDO (validación de nombres)
 // ============================================================
 
 bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePath, 
@@ -355,6 +355,12 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
     
     std::string fileName = parts.back();
     parts.pop_back();
+    
+    // ✅ VALIDAR NOMBRE (máximo 11 caracteres)
+    if (fileName.length() > 11) {
+        disk.close();
+        return false;
+    }
     
     std::string parentPath = "/";
     if (!parts.empty()) {
@@ -376,12 +382,10 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         return false;
     }
     
-    // ============================================================
-    // ✅ CORREGIDO: Manejar sobrescritura de archivo existente
-    // ============================================================
+    // Manejar sobrescritura
     int existingInode = findInodeByPath(diskPath, filePath, sb, mbr, partitionIndex);
     if (existingInode != -1) {
-        // 1. Limpiar la entrada en la carpeta padre
+        // Limpiar entrada en carpeta padre
         for (int i = 0; i < 12; i++) {
             if (parentInode.i_block[i] != -1) {
                 BlockFolder folderBlock = readBlockFolder(disk, sb, parentInode.i_block[i]);
@@ -401,7 +405,7 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
             }
         }
         
-        // 2. Liberar el inodo y bloques viejos
+        // Liberar inodo y bloques viejos
         Inode existing = readInode(disk, sb, existingInode);
         for (int i = 0; i < 16; i++) {
             if (existing.i_block[i] != -1) {
@@ -411,9 +415,7 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         markInodeFree(disk, sb, existingInode);
     }
     
-    // ============================================================
     // Crear nuevo inodo
-    // ============================================================
     int newInodeIndex = findFreeInode(disk, sb);
     if (newInodeIndex == -1) {
         disk.close();
@@ -495,7 +497,7 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
     writeInode(disk, sb, newInodeIndex, newInode);
     markInodeUsed(disk, sb, newInodeIndex);
     
-    // Escribir datos en bloques directos
+    // Escribir datos
     size_t offset = 0;
     for (int i = 0; i < directBlocks && i < 12; i++) {
         BlockFile fileBlock;
@@ -532,7 +534,7 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
     BlockFolder folderBlock = readBlockFolder(disk, sb, blockIndex);
     bool added = false;
     
-    // ✅ Verificar si ya existe (seguridad extra)
+    // Verificar si ya existe
     for (int i = 0; i < 4; i++) {
         std::string name(folderBlock.b_content[i].b_name);
         name = name.c_str();
@@ -542,17 +544,18 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
         }
     }
     
-    // ✅ Insertar en slot libre
+    // Insertar en slot libre
     if (!added) {
         for (int i = 0; i < 4; i++) {
             std::string name(folderBlock.b_content[i].b_name);
             name = name.c_str();
             if (name.empty() || folderBlock.b_content[i].b_inodo == -1) {
+                // ✅ Validación de nombre ya hecha al inicio
                 strncpy(folderBlock.b_content[i].b_name, fileName.c_str(), 11);
                 folderBlock.b_content[i].b_inodo = newInodeIndex;
                 writeBlockFolder(disk, sb, blockIndex, folderBlock);
                 added = true;
-                break;  // ✅ CRUCIAL: SALIR DESPUÉS DE INSERTAR
+                break;
             }
         }
     }
@@ -567,7 +570,7 @@ bool Ext2Utils::writeFile(const std::string& diskPath, const std::string& filePa
 }
 
 // ============================================================
-// CREAR CARPETAS
+// createDirectory - CORREGIDO (validación de nombres)
 // ============================================================
 
 bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& dirPath,
@@ -584,6 +587,12 @@ bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& 
     
     std::string dirName = parts.back();
     parts.pop_back();
+    
+    // ✅ VALIDAR NOMBRE (máximo 11 caracteres)
+    if (dirName.length() > 11) {
+        disk.close();
+        return false;
+    }
     
     std::string parentPath = "/";
     if (!parts.empty()) {
@@ -629,12 +638,10 @@ bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& 
     // Inicializar bloque de carpeta
     BlockFolder folderBlock;
     memset(&folderBlock, 0, sizeof(BlockFolder));
-    
     for (int i = 0; i < 4; i++) {
         folderBlock.b_content[i].b_inodo = -1;
         memset(folderBlock.b_content[i].b_name, 0, 12);
     }
-    
     writeBlockFolder(disk, sb, blockIndex, folderBlock);
     
     // Crear inodo para la carpeta
@@ -684,11 +691,12 @@ bool Ext2Utils::createDirectory(const std::string& diskPath, const std::string& 
         std::string name(parentFolder.b_content[i].b_name);
         name = name.c_str();
         if (name.empty() || parentFolder.b_content[i].b_inodo == -1) {
+            // ✅ Validación de nombre ya hecha al inicio
             strncpy(parentFolder.b_content[i].b_name, dirName.c_str(), 11);
             parentFolder.b_content[i].b_inodo = newInodeIndex;
             writeBlockFolder(disk, sb, parentBlockIndex, parentFolder);
             added = true;
-            break;  // ✅ CRUCIAL: SALIR DESPUÉS DE INSERTAR
+            break;
         }
     }
     

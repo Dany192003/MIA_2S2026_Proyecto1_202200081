@@ -66,7 +66,6 @@ export default {
           const disks = lsdiskResult.data.data.disks
           this.stats.discos = disks.length
           
-          // Contar particiones totales
           let totalPartitions = 0
           for (const disk of disks) {
             totalPartitions += disk.partitions?.length || 0
@@ -89,37 +88,27 @@ export default {
           }
         }
 
-        // 3. Obtener usuarios (si hay sesión)
+        // 3. ✅ CORREGIDO: Verificar sesión SIN hacer login automático
         if (mountId) {
-          // Verificar si ya hay sesión activa con login
-          const loginResult = await analyzeCommand(`login -user=root -pass=123 -id=${mountId}`)
-          console.log('📊 login result:', loginResult)
+          // Intentar leer users.txt (requiere sesión, pero no la inicia)
+          const usersResult = await analyzeCommand('cat -file1=/users.txt')
+          console.log('📊 users.txt result:', usersResult)
           
-          if (loginResult.success) {
+          if (usersResult.success && usersResult.data?.data?.content) {
             this.isLoggedIn = true
-            
-            // Leer users.txt
-            const usersResult = await analyzeCommand('cat -file1=/users.txt')
-            console.log('📊 users.txt result:', usersResult)
-            
-            if (usersResult.success && usersResult.data?.data?.content) {
-              const lines = usersResult.data.data.content.split('\n').filter(line => line.trim())
-              let userCount = 0
-              for (const line of lines) {
-                if (line.includes(', U, ')) {
-                  userCount++
-                }
+            const lines = usersResult.data.data.content.split('\n').filter(line => line.trim())
+            let userCount = 0
+            for (const line of lines) {
+              if (line.includes(', U, ')) {
+                userCount++
               }
-              this.stats.usuarios = userCount
             }
+            this.stats.usuarios = userCount
           }
         }
 
-        // 4. Estimar archivos (desde tree o ls)
-        if (mountId && this.isLoggedIn) {
-          // Usar ls para contar archivos en la raíz
-          const lsResult = await analyzeCommand(`rep -name=ls -path_file_ls=/ -id=${mountId}`)
-          // Por ahora mantenemos un valor estimado basado en usuarios
+        // 4. Estimar archivos
+        if (mountId) {
           this.stats.archivos = this.stats.usuarios > 0 ? 2 : 0
         }
 
