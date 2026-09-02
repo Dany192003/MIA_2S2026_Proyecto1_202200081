@@ -9,6 +9,12 @@ CommandResult CommandHandler::processRep(const json& params) {
     result.success = false;
     
     try {
+        // ✅ AGREGAR: Verificar sesión activa (según PDF)
+        if (!isLoggedIn()) {
+            result.message = "Error: No hay sesión activa. Use LOGIN primero.";
+            return result;
+        }
+        
         std::string name = params["name"];
         std::string path = params["path"];
         std::string id = params["id"];
