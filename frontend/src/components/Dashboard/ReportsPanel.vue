@@ -19,12 +19,12 @@
         <p>No hay reportes generados</p>
         <span class="hint">Usa el comando <kbd>rep</kbd> para generar reportes</span>
       </div>
-      <div v-for="report in filteredReports" :key="report.name" 
+      <div v-for="report in filteredReports" :key="report.path" 
            class="report-item"
            @click="viewReport(report)">
         <div class="report-info">
-          <span class="report-icon">{{ report.type === 'image' ? '🖼️' : report.type === 'dot' ? '📊' : '📄' }}</span>
-          <span class="report-name">{{ report.name }}</span>
+          <span class="report-icon">{{ report.type === 'image' ? '🖼️' : '📄' }}</span>
+          <span class="report-name">{{ report.displayName }}</span>
           <span class="report-size">{{ formatSize(report.size) }}</span>
         </div>
         <div class="report-status">
@@ -36,7 +36,7 @@
     <!-- Vista previa -->
     <div v-if="selectedReport" class="report-preview">
       <div class="preview-header">
-        <span class="preview-title">{{ selectedReport.name }}</span>
+        <span class="preview-title">{{ selectedReport.displayName }}</span>
         <span class="preview-path">{{ selectedReport.path }}</span>
         <button class="preview-close" @click="closePreview">×</button>
       </div>
@@ -45,7 +45,8 @@
              :src="selectedReport.preview || selectedReport.path" 
              alt="Reporte" 
              @error="handleImageError" />
-        <pre v-else class="text-preview">{{ previewContent }}</pre>
+        <pre v-else-if="selectedReport.type === 'text'" class="text-preview">{{ previewContent || 'Contenido del reporte...' }}</pre>
+        <span v-else class="preview-info">📊 Archivo .dot (Graphviz)</span>
       </div>
       <div class="preview-actions">
         <button class="btn-download" @click="downloadReport">📥 Descargar</button>
@@ -63,7 +64,6 @@ export default {
   data() {
     return {
       activeTab: 'sistema',
-      mountId: '',
       selectedReport: null,
       previewContent: '',
       reportFiles: [],
@@ -82,42 +82,29 @@ export default {
         'ls': 'archivos',
         'bm_inode': 'bitmaps',
         'bm_block': 'bitmaps',
-        'file': 'bitmaps'
+        'file': 'archivos'  // ✅ Cambiado de 'bitmaps' a 'archivos'
       }
     }
   },
   computed: {
     filteredReports() {
-      const baseNameMap = {
-        'mbr': 'mbr',
-        'disk': 'disk',
-        'sb': 'sb',
-        'inode': 'inode',
-        'block': 'block',
-        'tree': 'tree',
-        'ls': 'ls',
-        'bm_inode': 'bm_inode',
-        'bm_block': 'bm_block',
-        'file': 'file'
-      }
-      
       return this.reportFiles
         .filter(r => {
-          // Obtener el nombre base del archivo
-          let baseName = r.name.replace(/\.(png|txt|dot)$/, '').toLowerCase()
-          // Si tiene timestamp, quitarlo
-          baseName = baseName.replace(/_[0-9]+$/, '')
+          // ✅ Filtrar archivos .dot
+          if (r.extension === '.dot') return false
           
+          let baseName = r.name.replace(/\.(png|txt)$/, '').toLowerCase()
+          baseName = baseName.replace(/_[0-9]+$/, '')
           const tab = this.reportTypes[baseName] || 'sistema'
           return tab === this.activeTab
         })
         .map(r => {
-          let baseName = r.name.replace(/\.(png|txt|dot)$/, '').toLowerCase()
+          let baseName = r.name.replace(/\.(png|txt)$/, '').toLowerCase()
           baseName = baseName.replace(/_[0-9]+$/, '')
           return {
             ...r,
             displayName: baseName.toUpperCase(),
-            type: r.extension === '.png' ? 'image' : r.extension === '.dot' ? 'dot' : 'text'
+            type: r.extension === '.png' ? 'image' : r.extension === '.txt' ? 'text' : 'dot'
           }
         })
     }
@@ -129,10 +116,11 @@ export default {
     async refresh() {
       try {
         const result = await analyzeCommand('lsreports')
-        console.log('📊 lsreports result:', result)
-        
         if (result.success && result.data?.data?.reports) {
-          this.reportFiles = result.data.data.reports
+          // ✅ Filtrar archivos .dot
+          this.reportFiles = result.data.data.reports.filter(r => 
+            r.extension !== '.dot'
+          )
         } else {
           this.reportFiles = []
         }
@@ -152,10 +140,23 @@ export default {
       this.selectedReport = report
       this.previewContent = ''
       
-      // Si es texto, intentar cargar contenido
       if (report.type === 'text') {
-        // Aquí se podría cargar el contenido del archivo
-        this.previewContent = 'Contenido del reporte de texto...'
+        // Cargar contenido del reporte de texto
+        this.loadTextReport(report)
+      }
+    },
+    async loadTextReport(report) {
+      try {
+        // Intentar leer el contenido del archivo de texto
+        const result = await analyzeCommand(`cat -file1=${report.path}`)
+        if (result.success && result.data?.data?.content) {
+          this.previewContent = result.data.data.content
+        } else {
+          this.previewContent = 'No se pudo cargar el contenido del reporte'
+        }
+      } catch (error) {
+        console.error('Error cargando reporte de texto:', error)
+        this.previewContent = 'Error al cargar el contenido'
       }
     },
     closePreview() {
@@ -163,6 +164,7 @@ export default {
     },
     handleImageError() {
       console.warn('Error cargando imagen del reporte')
+      this.selectedReport = null
     },
     downloadReport() {
       if (this.selectedReport) {
@@ -426,6 +428,11 @@ export default {
   overflow: auto;
   white-space: pre-wrap;
   width: 100%;
+}
+
+.preview-info {
+  font-size: 9px;
+  color: #8b949e;
 }
 
 .preview-actions {

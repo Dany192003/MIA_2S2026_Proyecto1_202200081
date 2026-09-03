@@ -2,7 +2,7 @@
   <div class="file-explorer">
     <div class="explorer-header">
       <span class="explorer-title">Archivos</span>
-      <span class="mount-info" v-if="mountId">ID: {{ mountId }}</span>
+      <span class="mount-info" v-if="activeMountId">ID: {{ activeMountId }}</span>
       <span class="mount-info" v-else>sin montar</span>
     </div>
 
@@ -16,16 +16,41 @@
       <div v-if="loading" class="loading-state">
         <span>Cargando...</span>
       </div>
+      <div v-else-if="error" class="error-state">
+        <span class="error-icon">⚠️</span>
+        <span class="error-text">{{ error }}</span>
+        <span v-if="error.includes('sesión')" class="error-hint">Usa LOGIN para acceder a los archivos</span>
+      </div>
       <div v-else-if="files.length === 0" class="empty-state">
-        <p>Vacio</p>
+        <p>Vacío</p>
+        <span class="hint">La carpeta está vacía</span>
       </div>
       <div v-for="file in files" :key="file.name" class="file-item" 
            :class="{ 'is-folder': file.isFolder }" 
-           @dblclick="openFolder(file)">
+           @dblclick="openItem(file)">
         <span class="file-icon">{{ file.isFolder ? '📁' : '📄' }}</span>
         <span class="file-name">{{ file.name }}</span>
         <span class="file-size">{{ file.isFolder ? '-' : formatSize(file.size) }}</span>
-        <span class="file-perms">{{ file.perms }}</span>
+        <span class="file-perms">{{ file.perms || '---' }}</span>
+        <button v-if="!file.isFolder" class="btn-view" @click.stop="viewFile(file)" title="Ver contenido">👁️</button>
+      </div>
+    </div>
+
+    <!-- Modal para ver contenido de archivo -->
+    <div v-if="showFileModal" class="file-modal" @click.self="closeFileModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-title">📄 {{ selectedFileName }}</span>
+          <button class="modal-close" @click="closeFileModal">×</button>
+        </div>
+        <div class="modal-body">
+          <pre v-if="fileContent" class="file-content">{{ fileContent }}</pre>
+          <div v-else class="loading-content">Cargando contenido...</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-copy-content" @click="copyFileContent">📋 Copiar</button>
+          <button class="btn-close-modal" @click="closeFileModal">Cerrar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -36,51 +61,71 @@ import { analyzeCommand } from '../../services/api.js'
 
 export default {
   name: 'FileExplorer',
+  props: {
+    activePartition: {
+      type: Object,
+      default: () => ({ id: '', name: '', disk: '', status: '' })
+    }
+  },
+  watch: {
+    'activePartition.id': {
+      handler(newVal) {
+        if (newVal) {
+          this.currentPath = '/'
+          this.refresh()
+        }
+      },
+      immediate: true
+    }
+  },
   data() {
     return {
       currentPath: '/',
-      mountId: '',
       files: [],
-      loading: false
+      loading: false,
+      error: null,
+      showFileModal: false,
+      selectedFileName: '',
+      fileContent: '',
+      selectedFilePath: ''
     }
   },
-  mounted() {
-    // Intentar obtener el ID de montaje
-    this.getMountId()
+  computed: {
+    activeMountId() {
+      return this.activePartition.id || ''
+    }
   },
   methods: {
-    async getMountId() {
-      try {
-        const result = await analyzeCommand('mounted')
-        if (result.success && result.data?.data?.mounted) {
-          const mounted = result.data.data.mounted
-          if (mounted.length > 0) {
-            this.mountId = mounted[0].id || ''
-            this.refresh()
-          }
-        }
-      } catch (error) {
-        console.error('Error obteniendo ID de montaje:', error)
-      }
-    },
     async refresh() {
-      if (!this.mountId) {
-        await this.getMountId()
-        if (!this.mountId) return
+      const mountId = this.activePartition.id
+      
+      if (!mountId) {
+        this.error = '⚠️ No hay partición seleccionada'
+        this.files = []
+        return
       }
 
       this.loading = true
+      this.error = null
+      
       try {
-        const result = await analyzeCommand(`lsjson -path=${this.currentPath} -id=${this.mountId}`)
-        console.log('📂 lsjson result:', result)
+        const result = await analyzeCommand(`lsjson -path=${this.currentPath} -id=${mountId}`)
         
         if (result.success && result.data?.data?.files) {
           this.files = result.data.data.files
+        } else if (result.message && result.message.includes('No hay sesión')) {
+          this.error = '⚠️ No hay sesión activa. Use LOGIN primero.'
+          this.files = []
+        } else if (result.message && result.message.includes('No existe')) {
+          this.error = '❌ La ruta no existe: ' + this.currentPath
+          this.files = []
         } else {
+          this.error = result.message || 'Error al listar archivos'
           this.files = []
         }
       } catch (error) {
         console.error('Error listando archivos:', error)
+        this.error = 'Error al cargar archivos'
         this.files = []
       }
       this.loading = false
@@ -93,10 +138,45 @@ export default {
         this.refresh()
       }
     },
-    openFolder(file) {
+    openItem(file) {
       if (file.isFolder) {
         this.currentPath = this.currentPath === '/' ? '/' + file.name : this.currentPath + '/' + file.name
         this.refresh()
+      } else {
+        this.viewFile(file)
+      }
+    },
+    async viewFile(file) {
+      if (!file || file.isFolder) return
+      
+      this.selectedFileName = file.name
+      this.selectedFilePath = this.currentPath === '/' ? '/' + file.name : this.currentPath + '/' + file.name
+      this.showFileModal = true
+      this.fileContent = ''
+      
+      try {
+        const result = await analyzeCommand(`cat -file1=${this.selectedFilePath}`)
+        if (result.success && result.data?.data?.content) {
+          this.fileContent = result.data.data.content
+        } else {
+          this.fileContent = '⚠️ No se pudo leer el contenido del archivo'
+        }
+      } catch (error) {
+        console.error('Error leyendo archivo:', error)
+        this.fileContent = '❌ Error al leer el archivo'
+      }
+    },
+    closeFileModal() {
+      this.showFileModal = false
+      this.selectedFileName = ''
+      this.fileContent = ''
+      this.selectedFilePath = ''
+    },
+    copyFileContent() {
+      if (this.fileContent) {
+        navigator.clipboard.writeText(this.fileContent)
+          .then(() => alert('📋 Contenido copiado al portapapeles'))
+          .catch(() => alert('📋 Contenido:\n' + this.fileContent))
       }
     },
     formatSize(bytes) {
@@ -198,13 +278,40 @@ export default {
   gap: 2px;
 }
 
-.loading-state, .empty-state {
+.loading-state, .empty-state, .error-state {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #8b949e;
   font-size: 12px;
+}
+
+.error-state {
+  color: #f85149;
+}
+
+.error-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.error-text {
+  font-size: 11px;
+  text-align: center;
+}
+
+.error-hint {
+  font-size: 9px;
+  color: #8b949e;
+  margin-top: 4px;
+}
+
+.hint {
+  font-size: 9px;
+  color: #30363d;
+  margin-top: 2px;
 }
 
 .file-item {
@@ -255,8 +362,146 @@ export default {
   text-align: center;
 }
 
+.btn-view {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.btn-view:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+
+/* Modal */
+.file-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: #161b22;
+  border-radius: 12px;
+  border: 1px solid #30363d;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #30363d;
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.3s ease;
+}
+
+.modal-close:hover {
+  color: #f85149;
+}
+
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 16px;
+  min-height: 100px;
+  max-height: 400px;
+}
+
+.file-content {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #a6e3a1;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  background: #0d1117;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+}
+
+.loading-content {
+  color: #8b949e;
+  text-align: center;
+  padding: 20px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #30363d;
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+.btn-copy-content, .btn-close-modal {
+  padding: 4px 14px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #30363d;
+}
+
+.btn-copy-content {
+  background: #58a6ff;
+  color: #0d1117;
+  border-color: #58a6ff;
+}
+
+.btn-copy-content:hover {
+  background: #79c0ff;
+}
+
+.btn-close-modal {
+  background: transparent;
+  color: #8b949e;
+}
+
+.btn-close-modal:hover {
+  border-color: #f85149;
+  color: #f85149;
+}
+
 ::-webkit-scrollbar {
-  width: 3px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -266,5 +511,9 @@ export default {
 ::-webkit-scrollbar-thumb {
   background: #30363d;
   border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #58a6ff;
 }
 </style>

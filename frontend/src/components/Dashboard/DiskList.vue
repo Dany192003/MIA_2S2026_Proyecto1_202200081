@@ -23,9 +23,20 @@
         </div>
         <div class="disk-path">{{ disk.path }}</div>
         <div class="disk-partitions">
-          <span v-for="part in disk.partitions" :key="part.name" 
-                class="partition-tag" :class="'tag-' + part.type.toLowerCase()">
+          <span 
+            v-for="part in disk.partitions" 
+            :key="part.name" 
+            class="partition-tag" 
+            :class="{
+              'tag-p': (part.type || '').toLowerCase() === 'p',
+              'tag-e': (part.type || '').toLowerCase() === 'e',
+              'tag-l': (part.type || '').toLowerCase() === 'l',
+              'mounted': part.status === '1'
+            }"
+            @click="selectPartition(part)"
+          >
             {{ part.name }} ({{ formatSize(part.size) }})
+            <span v-if="part.status === '1'">🔗</span>
           </span>
           <span v-if="!disk.partitions || disk.partitions.length === 0" class="partition-empty">sin particiones</span>
         </div>
@@ -39,6 +50,7 @@ import { analyzeCommand } from '../../services/api.js'
 
 export default {
   name: 'DiskList',
+  emits: ['partition-selected'],
   data() {
     return {
       disks: [],
@@ -53,24 +65,16 @@ export default {
       this.loading = true
       try {
         const result = await analyzeCommand('lsdisk')
-        console.log('📀 LSDISK raw result:', result)
-        console.log('📀 result.data:', result.data)
-        console.log('📀 result.data.data:', result.data?.data)
-        
-        // ✅ CORREGIDO: La estructura es result.data.data
-        const backendData = result.data?.data
-        if (backendData && backendData.disks) {
-          this.disks = backendData.disks.map(disk => ({
+        if (result.success && result.data?.data?.disks) {
+          this.disks = result.data.data.disks.map(disk => ({
             name: disk.name,
             path: disk.path,
             size: disk.size,
             partitions: disk.partitions || [],
             partition_count: disk.partition_count || 0
           }))
-          console.log('📀 Discos procesados:', this.disks)
         } else {
           this.disks = []
-          console.log('📀 No se encontraron discos')
         }
       } catch (error) {
         console.error('Error actualizando lista de discos:', error)
@@ -84,6 +88,16 @@ export default {
       const sizes = ['B', 'KB', 'MB', 'GB']
       const i = Math.floor(Math.log(bytes) / Math.log(k))
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    },
+    selectPartition(part) {
+      // Encontrar el disco al que pertenece esta partición
+      const disk = this.disks.find(d => d.partitions.includes(part))
+      this.$emit('partition-selected', {
+        id: part.id || '',
+        name: part.name,
+        disk: disk?.path || '',
+        status: part.status || '0'
+      })
     }
   }
 }
@@ -213,6 +227,13 @@ export default {
   background: #21262d;
   color: #8b949e;
   border: 1px solid #30363d;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.partition-tag:hover {
+  border-color: #58a6ff;
+  transform: scale(1.05);
 }
 
 .partition-tag.tag-p {
@@ -227,6 +248,15 @@ export default {
 
 .partition-tag.tag-l {
   border-color: #3fb950;
+  color: #3fb950;
+}
+
+.partition-tag.mounted {
+  border-color: #3fb950;
+  background: rgba(63, 185, 80, 0.15);
+}
+
+.partition-tag.mounted .partition-name {
   color: #3fb950;
 }
 

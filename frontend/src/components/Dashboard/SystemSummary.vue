@@ -2,6 +2,9 @@
   <div class="system-summary">
     <div class="summary-header">
       <span class="summary-title">Sistema</span>
+      <span v-if="isLoggedIn" class="session-badge">✅ Sesión activa</span>
+      <span v-else-if="hasMountedPartitions" class="session-badge warning">⚠️ Sin sesión</span>
+      <span v-else class="session-badge">⏳ Sin montar</span>
       <button class="btn-refresh" @click="refresh" title="Actualizar">↻</button>
     </div>
     <div v-if="loading" class="loading-state">
@@ -37,6 +40,21 @@ import { analyzeCommand } from '../../services/api.js'
 
 export default {
   name: 'SystemSummary',
+  props: {
+    activePartition: {
+      type: Object,
+      default: () => ({ id: '', name: '', disk: '', status: '' })
+    }
+  },
+  watch: {
+    'activePartition.id': {
+      handler(newVal, oldVal) {
+        console.log('🔍 [SystemSummary] watch activePartition.id:', { newVal, oldVal })
+        this.refresh()
+      },
+      immediate: true
+    }
+  },
   data() {
     return {
       stats: {
@@ -48,74 +66,136 @@ export default {
       },
       loading: false,
       sessionId: '',
-      isLoggedIn: false
+      isLoggedIn: false,
+      hasMountedPartitions: false
     }
   },
   mounted() {
+    console.log('🔍 [SystemSummary] mounted')
     this.refresh()
   },
   methods: {
+    async countFilesRecursive(path) {
+      console.log('🔍 [SystemSummary] countFilesRecursive path:', path)
+      let count = 0
+      try {
+        const mountId = this.activePartition.id || this.sessionId
+        console.log('🔍 [SystemSummary] countFilesRecursive mountId:', mountId)
+        const result = await analyzeCommand(`lsjson -path=${path} -id=${mountId}`)
+        console.log('🔍 [SystemSummary] countFilesRecursive result:', result)
+        if (result.success && result.data?.data?.files) {
+          for (const file of result.data.data.files) {
+            if (!file.isFolder) {
+              count++
+            } else {
+              const subPath = path === '/' ? '/' + file.name : path + '/' + file.name
+              count += await this.countFilesRecursive(subPath)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('🔍 [SystemSummary] countFilesRecursive error:', error)
+      }
+      console.log('🔍 [SystemSummary] countFilesRecursive count:', count)
+      return count
+    },
     async refresh() {
+      console.log('🔍 [SystemSummary] refresh START')
+      console.log('🔍 [SystemSummary] activePartition:', this.activePartition)
       this.loading = true
       try {
         // 1. Obtener discos con lsdisk
+        console.log('🔍 [SystemSummary] 1. Obteniendo discos...')
         const lsdiskResult = await analyzeCommand('lsdisk')
-        console.log('📊 lsdisk result:', lsdiskResult)
-        
+        console.log('🔍 [SystemSummary] lsdiskResult:', lsdiskResult)
         if (lsdiskResult.success && lsdiskResult.data?.data?.disks) {
           const disks = lsdiskResult.data.data.disks
           this.stats.discos = disks.length
+          console.log('🔍 [SystemSummary] Discos encontrados:', this.stats.discos)
           
           let totalPartitions = 0
           for (const disk of disks) {
             totalPartitions += disk.partitions?.length || 0
           }
           this.stats.particiones = totalPartitions
+          console.log('🔍 [SystemSummary] Particiones totales:', this.stats.particiones)
         }
 
-        // 2. Obtener particiones montadas
-        const mountedResult = await analyzeCommand('mounted')
-        console.log('📊 mounted result:', mountedResult)
+        // 2. ✅ Usar activePartition si existe, si no usar mounted[0]
+        let mountId = this.activePartition.id || ''
+        console.log('🔍 [SystemSummary] mountId de activePartition:', mountId)
         
-        let mountId = ''
-        if (mountedResult.success && mountedResult.data?.data?.mounted) {
-          const mountedList = mountedResult.data.data.mounted
-          this.stats.montadas = mountedList.length
-          
-          if (mountedList.length > 0) {
-            mountId = mountedList[0].id || ''
-            this.sessionId = mountId
+        if (!mountId) {
+          console.log('🔍 [SystemSummary] 2. Obteniendo mounted (no hay activePartition)...')
+          const mountedResult = await analyzeCommand('mounted')
+          console.log('🔍 [SystemSummary] mountedResult:', mountedResult)
+          if (mountedResult.success && mountedResult.data?.data?.mounted) {
+            const mountedList = mountedResult.data.data.mounted
+            this.stats.montadas = mountedList.length
+            this.hasMountedPartitions = mountedList.length > 0
+            console.log('🔍 [SystemSummary] Montadas:', this.stats.montadas)
+            
+            if (mountedList.length > 0) {
+              mountId = mountedList[0].id || ''
+              this.sessionId = mountId
+              console.log('🔍 [SystemSummary] mountId de mounted[0]:', mountId)
+            }
           }
+        } else {
+          // Si activePartition tiene ID, actualizar stats.montadas
+          this.stats.montadas = 1
+          this.hasMountedPartitions = true
+          this.sessionId = mountId
+          console.log('🔍 [SystemSummary] Usando activePartition, montadas: 1')
         }
 
-        // 3. ✅ CORREGIDO: Verificar sesión SIN hacer login automático
+        // 3. Obtener usuarios (solo si hay sesión)
+        this.isLoggedIn = false
+        console.log('🔍 [SystemSummary] 3. Verificando sesión con mountId:', mountId)
         if (mountId) {
-          // Intentar leer users.txt (requiere sesión, pero no la inicia)
           const usersResult = await analyzeCommand('cat -file1=/users.txt')
-          console.log('📊 users.txt result:', usersResult)
-          
+          console.log('🔍 [SystemSummary] usersResult:', usersResult)
           if (usersResult.success && usersResult.data?.data?.content) {
             this.isLoggedIn = true
+            console.log('🔍 [SystemSummary] isLoggedIn: true')
             const lines = usersResult.data.data.content.split('\n').filter(line => line.trim())
             let userCount = 0
             for (const line of lines) {
               if (line.includes(', U, ')) {
-                userCount++
+                const parts = line.split(',').map(p => p.trim())
+                if (parts[0] !== '0') {
+                  userCount++
+                }
               }
             }
             this.stats.usuarios = userCount
+            console.log('🔍 [SystemSummary] Usuarios:', this.stats.usuarios)
+          } else {
+            console.log('🔍 [SystemSummary] usersResult falló o no hay sesión')
           }
         }
 
-        // 4. Estimar archivos
-        if (mountId) {
-          this.stats.archivos = this.stats.usuarios > 0 ? 2 : 0
+        // 4. ✅ Contar archivos reales con lsjson recursivo
+        console.log('🔍 [SystemSummary] 4. Contando archivos...')
+        if (this.isLoggedIn && mountId) {
+          try {
+            const fileCount = await this.countFilesRecursive('/')
+            this.stats.archivos = fileCount
+            console.log('🔍 [SystemSummary] Archivos contados:', this.stats.archivos)
+          } catch (error) {
+            console.error('Error contando archivos:', error)
+            this.stats.archivos = 0
+          }
+        } else {
+          console.log('🔍 [SystemSummary] No se cuentan archivos (sin sesión o mountId)')
+          this.stats.archivos = 0
         }
 
       } catch (error) {
-        console.error('Error actualizando estadísticas:', error)
+        console.error('🔍 [SystemSummary] refresh ERROR:', error)
       }
       this.loading = false
+      console.log('🔍 [SystemSummary] refresh END stats:', this.stats)
     }
   }
 }
@@ -146,6 +226,21 @@ export default {
   color: #8b949e;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.session-badge {
+  font-size: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb950;
+  border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.session-badge.warning {
+  background: rgba(210, 153, 34, 0.15);
+  color: #d29922;
+  border-color: rgba(210, 153, 34, 0.2);
 }
 
 .btn-refresh {
