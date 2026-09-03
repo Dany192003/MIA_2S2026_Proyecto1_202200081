@@ -57,17 +57,19 @@ CommandResult CommandHandler::processMount(const json& params) {
         }
         
         if (partitionIndex == -1) {
+            disk.close();
             result.message = "Error: No existe la partición: " + name + " en el disco: " + path;
             return result;
         }
         
         // 5. Verificar que no sea una partición extendida
         if (mbr.mbr_partitions[partitionIndex].part_type == 'E') {
+            disk.close();
             result.message = "Error: No se puede montar una partición extendida";
             return result;
         }
         
-        // 6. Calcular número de partición
+        // 6. Calcular número de partición (correlative)
         int partitionNumber = 1;
         for (int i = 0; i < 4; i++) {
             if (mbr.mbr_partitions[i].part_correlative > 0) {
@@ -79,12 +81,11 @@ CommandResult CommandHandler::processMount(const json& params) {
         std::string carnet = "202200081";
         std::string mountId = generateMountId(carnet, path, partitionNumber);
         
-// 8. Actualizar la partición en el MBR
-mbr.mbr_partitions[partitionIndex].part_status = '1';
-mbr.mbr_partitions[partitionIndex].part_correlative = partitionNumber;
-memset(mbr.mbr_partitions[partitionIndex].part_id, 0, 4);
-// 🔥 CORREGIDO: Copiar los 4 caracteres completos
-strncpy(mbr.mbr_partitions[partitionIndex].part_id, mountId.c_str(), 4);
+        // 8. Actualizar la partición en el MBR
+        mbr.mbr_partitions[partitionIndex].part_status = '1';
+        mbr.mbr_partitions[partitionIndex].part_correlative = partitionNumber;
+        memset(mbr.mbr_partitions[partitionIndex].part_id, 0, 4);
+        strncpy(mbr.mbr_partitions[partitionIndex].part_id, mountId.c_str(), 4);
         
         // 9. Escribir el MBR actualizado
         disk.seekp(0, std::ios::beg);
@@ -101,7 +102,8 @@ strncpy(mbr.mbr_partitions[partitionIndex].part_id, mountId.c_str(), 4);
             {"id", mountId},
             {"path", path},
             {"name", name},
-            {"partition", partitionIndex}
+            {"partition", partitionIndex},
+            {"correlative", partitionNumber}
         };
         
     } catch (const std::exception& e) {
